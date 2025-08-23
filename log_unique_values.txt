@@ -1,0 +1,8 @@
+[subtype]
+[level]
+[srcintf]
+[dstintf]
+[action]
+[service]
+[devtype]
+[crlevel]
