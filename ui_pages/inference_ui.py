@@ -8,9 +8,21 @@ import joblib
 
 def app() -> None:
     st.title("Model Inference")
-    data_file = st.file_uploader("Upload data CSV", type=["csv"])
-    binary_model = st.file_uploader("Upload binary model", type=["pkl", "joblib"])
-    multi_model = st.file_uploader("Upload multiclass model", type=["pkl", "joblib"])
+    data_file = st.file_uploader(
+        "Upload data CSV",
+        type=["csv"],
+        help="Max file size: 2GB",
+    )
+    binary_model = st.file_uploader(
+        "Upload binary model",
+        type=["pkl", "joblib"],
+        help="Max file size: 2GB",
+    )
+    multi_model = st.file_uploader(
+        "Upload multiclass model",
+        type=["pkl", "joblib"],
+        help="Max file size: 2GB",
+    )
     if st.button("Run inference"):
         if data_file is None or binary_model is None or multi_model is None:
             st.error("Please upload data and model files")
