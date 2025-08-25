@@ -7,7 +7,11 @@ from training_pipeline.pipeline_main import TrainingPipeline
 
 def app() -> None:
     st.title("Training Pipeline")
-    uploaded_file = st.file_uploader("Upload training CSV", type=["csv"])
+    uploaded_file = st.file_uploader(
+        "Upload training CSV",
+        type=["csv"],
+        help="Max file size: 2GB",
+    )
     task_type = st.selectbox("Task type", ["binary", "multiclass"])
     optuna_enabled = st.checkbox("Enable Optuna", value=False)
     optimize_base = st.checkbox("Optimize base models", value=False)
