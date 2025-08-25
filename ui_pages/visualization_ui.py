@@ -9,7 +9,11 @@ def app() -> None:
     st.title("Prediction Visualization")
     df = st.session_state.get("prediction_results")
     if df is None:
-        uploaded = st.file_uploader("Upload prediction CSV", type=["csv"])
+        uploaded = st.file_uploader(
+            "Upload prediction CSV",
+            type=["csv"],
+            help="Max file size: 2GB",
+        )
         if uploaded is not None:
             df = pd.read_csv(uploaded)
             st.session_state["prediction_results"] = df
