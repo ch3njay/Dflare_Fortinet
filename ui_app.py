@@ -12,7 +12,9 @@ st.set_page_config(
     page_icon=":bar_chart:",
     layout="wide",
 )
+
 st.set_option("server.maxUploadSize", 2 * 1024)
+
 
 st.markdown(
     """
