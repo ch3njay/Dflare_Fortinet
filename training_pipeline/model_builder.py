@@ -40,7 +40,6 @@ class ModelBuilder:
         # -------- 降噪（不影響錯誤拋出）---------
         warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
         warnings.filterwarnings("ignore", message=".*gpu_hist.*deprecated.*")
-        warnings.filterwarnings("ignore", message='.*Parameters: { "predictor" } are not used.*')
         warnings.filterwarnings("ignore", message=".*Falling back to prediction using DMatrix.*")
         warnings.filterwarnings("ignore", message=".*No further splits with positive gain.*")
 
@@ -129,7 +128,6 @@ class ModelBuilder:
                     "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 1.0),
                     "tree_method": "hist",
                     "device": "cuda",
-                    "predictor": "gpu_predictor",
                     "random_state": rng,
                     "n_jobs": -1,
                 }
@@ -153,7 +151,6 @@ class ModelBuilder:
                 **study_xgb.best_params,
                 "tree_method": "hist",
                 "device": "cuda",
-                "predictor": "gpu_predictor",
                 "n_jobs": -1,
                 "random_state": rng,
                 **(
@@ -387,7 +384,6 @@ class ModelBuilder:
             p.update(tuned["XGB"])
         p.setdefault("tree_method", "hist")
         p.setdefault("device", "cuda")
-        p.setdefault("predictor", "gpu_predictor")
         p.setdefault("n_jobs", -1)
         p.setdefault("random_state", self.config.get("RANDOM_STATE", 42))
         p.update(task_args["XGB"])
