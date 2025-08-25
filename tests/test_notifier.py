@@ -24,7 +24,7 @@ def test_notify_from_csv(tmp_path, monkeypatch):
         return True, "OK"
 
     def fake_ask(desc, key):
-        return "建議一\n建議二"
+        return "Recommendation 1\nRecommendation 2"
 
     monkeypatch.setattr(notifier, "send_discord", fake_send)
     monkeypatch.setattr(notifier, "ask_gemini", fake_ask)
@@ -38,5 +38,5 @@ def test_notify_from_csv(tmp_path, monkeypatch):
     )
 
     assert len(sent) == 1
-    assert "高風險事件" in json.loads(sent[0])["content"]
+    assert "High-risk event detected" in json.loads(sent[0])["content"]
     assert len(res) == 1

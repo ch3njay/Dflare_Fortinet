@@ -65,7 +65,7 @@ def send_discord(webhook_url: str, content: str) -> Tuple[bool, str]:
 
 
 def ask_gemini(desc: str, api_key: str) -> str:
-    """Query Gemini for a two-line Traditional Chinese recommendation.
+    """Query Gemini for a two-line English recommendation.
 
     Falls back to a fixed message if the API call fails.
     """
@@ -76,17 +76,21 @@ def ask_gemini(desc: str, api_key: str) -> str:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-pro")
         prompt = (
-            "以下是Fortinet事件描述:\n"
+            "The following is a Fortinet event description:\n"
             f"{desc}\n"
-            "請以繁體中文產生兩段回應：第一段為威脅說明，第二段為立即建議。"
+            "Please provide two lines in English: the first line describes the threat, "
+            "the second line gives an immediate recommendation."
         )
         response = model.generate_content(prompt)
         text = response.text.strip()
         if "\n" not in text:
-            text += "\n尚無進一步建議。"
+            text += "\nNo further recommendation."
         return text
     except Exception:
-        return "威脅說明：無法取得 AI 建議。\n立即建議：請參考內部流程處理。"
+        return (
+            "Threat description: AI recommendation unavailable.\n"
+            "Immediate recommendation: please refer to internal procedures."
+        )
 
 
 def _find_column(columns: Iterable[str], aliases: Iterable[str]) -> Optional[str]:
@@ -120,7 +124,7 @@ def notify_from_csv(
             dedupe_key = f"{csv_path}:{mtime}"
         if dedupe_key in cache:
             if ui_log:
-                ui_log("檔案已處理過，跳過通知。")
+                ui_log("File already processed, skipping notification.")
             return []
         cache.add(dedupe_key)
 
@@ -138,7 +142,7 @@ def notify_from_csv(
                 columns = reader.fieldnames or []
     except Exception as exc:
         if ui_log:
-            ui_log(f"讀取 CSV 失敗: {exc}")
+            ui_log(f"Failed to read CSV: {exc}")
         return []
 
     cr_col = _find_column(columns, _COLUMN_ALIASES["crlevel"])
@@ -146,7 +150,7 @@ def notify_from_csv(
     desc_col = _find_column(columns, _COLUMN_ALIASES["description"])
     if not (cr_col and src_col and desc_col):
         if ui_log:
-            ui_log("CSV 缺少必要欄位。")
+            ui_log("CSV missing required columns.")
         return []
 
     risk_ints = {normalize_crlevel(x) for x in risk_levels}
@@ -163,20 +167,20 @@ def notify_from_csv(
         reco1 = lines[0] if lines else ""
         reco2 = lines[1] if len(lines) > 1 else ""
         message = (
-            "🚨 偵測到高風險事件（Fortinet）\n"
-            f"等級：{cr_text}（{cr_int}）\n"
-            f"來源 IP：{srcip}\n"
-            f"描述：{desc}\n"
-            "———— AI 建議 ————\n"
+            "🚨 High-risk event detected (Fortinet)\n"
+            f"Level: {cr_text} ({cr_int})\n"
+            f"Source IP: {srcip}\n"
+            f"Description: {desc}\n"
+            "———— AI Recommendation ————\n"
             f"{reco1}\n{reco2}"
         )
         ok, info = send_discord(discord_webhook, message)
         results.append((message, ok, info))
         if ui_log:
-            ui_log(f"已送出事件: {srcip} - {'成功' if ok else '失敗'}")
+            ui_log(f"Sent event: {srcip} - {'success' if ok else 'failure'}")
 
     if not results and ui_log:
-        ui_log("沒有符合條件的事件。")
+        ui_log("No events matched the criteria.")
     return results
 
 
