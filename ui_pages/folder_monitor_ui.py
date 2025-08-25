@@ -99,9 +99,11 @@ def app() -> None:
 
     if "folder" not in st.session_state:
         st.session_state.folder = os.getcwd()
+
     # separate widget value to allow programmatic updates without Streamlit errors
     if "folder_input" not in st.session_state:
         st.session_state.folder_input = st.session_state.folder
+
     if "observer" not in st.session_state:
         st.session_state.observer = None
         st.session_state.handler = None
@@ -111,18 +113,22 @@ def app() -> None:
 
     col1, col2 = st.columns([3, 1])
     with col1:
+
         st.text_input("Folder to monitor", key="folder_input")
+
     with col2:
         if st.button("Browse", disabled=tk is None or filedialog is None):
             root = tk.Tk()
             root.withdraw()
             selected = filedialog.askdirectory()
             if selected:
+
                 st.session_state.folder_input = selected
                 st.session_state.folder = selected
                 st.experimental_rerun()
     folder = st.session_state.folder_input
     st.session_state.folder = folder
+
 
     if Observer is None:
         st.error("watchdog is not installed")

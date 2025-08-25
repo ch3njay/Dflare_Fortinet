@@ -42,6 +42,10 @@ PAGE_DESCRIPTIONS = {
 }
 
 st.sidebar.title("📚 Navigation")
+st.sidebar.markdown(
+    "Use **Folder Monitor** to watch CSV/TXT and compressed log files. "
+    "Files are processed after 5 seconds of inactivity to avoid partial reads."
+)
 selection = st.sidebar.radio("Go to", list(PAGES.keys()))
 st.sidebar.markdown(PAGE_DESCRIPTIONS.get(selection, ""))
 PAGES[selection]()
