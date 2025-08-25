@@ -5,7 +5,6 @@ from ui_pages import (
     inference_ui,
     folder_monitor_ui,
     visualization_ui,
-    notifier_app,
 )
 
 st.set_page_config(
@@ -32,7 +31,6 @@ PAGES = {
     "🔍 Model Inference": inference_ui.app,
     "📂 Folder Monitor": folder_monitor_ui.app,
     "📊 Visualization": visualization_ui.app,
-    "🔔 Notifications": notifier_app.app,
 }
 
 PAGE_DESCRIPTIONS = {
@@ -41,12 +39,12 @@ PAGE_DESCRIPTIONS = {
     "🔍 Model Inference": "Perform inference using trained models.",
     "📂 Folder Monitor": "Watch a directory for CSV/TXT/log files, including compressed variants.",
     "📊 Visualization": "Explore dataset and model outputs through charts.",
-    "🔔 Notifications": "Send Discord alerts with Gemini-generated advice.",
 }
 
-st.sidebar.title("D-FLARE system")
+st.sidebar.title("📚 Navigation")
 st.sidebar.markdown(
-    "整合訓練、ETL、推論與通知的威脅分析平台。"
+    "Use **Folder Monitor** to watch CSV/TXT and compressed log files. "
+    "Files are processed after 5 seconds of inactivity to avoid partial reads."
 )
 selection = st.sidebar.radio("Go to", list(PAGES.keys()))
 st.sidebar.markdown(PAGE_DESCRIPTIONS.get(selection, ""))
