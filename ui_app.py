@@ -33,6 +33,15 @@ PAGES = {
     "📊 Visualization": visualization_ui.app,
 }
 
+PAGE_DESCRIPTIONS = {
+    "🧠 Training Pipeline": "Configure and run model training jobs.",
+    "⚙️ GPU ETL Pipeline": "Execute ETL processes accelerated by GPUs.",
+    "🔍 Model Inference": "Perform inference using trained models.",
+    "📂 Folder Monitor": "Watch a directory for CSV/TXT/log files, including compressed variants.",
+    "📊 Visualization": "Explore dataset and model outputs through charts.",
+}
+
 st.sidebar.title("📚 Navigation")
 selection = st.sidebar.radio("Go to", list(PAGES.keys()))
+st.sidebar.markdown(PAGE_DESCRIPTIONS.get(selection, ""))
 PAGES[selection]()
