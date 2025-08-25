@@ -4,7 +4,10 @@ utils.py（GPU 版通用工具）
 - 記憶體監控與暫存 flush（支援 cuDF / pandas）
 - 自動偵測 cudf/cupy 是否可用，無 GPU 時退回 CPU 以確保流程不中斷
 """
-import psutil
+try:
+    import psutil
+except Exception:  # pragma: no cover - fallback when psutil not installed
+    from ui_pages import psutil_stub as psutil  # type: ignore
 import gc
 import os
 import tempfile

@@ -3,7 +3,12 @@ from gpu_etl_pipeliner import run_pipeline
 
 def app() -> None:
     st.title("GPU ETL Pipeline")
-    uploaded_files = st.file_uploader("Upload log files", type=["csv", "txt", "gz"], accept_multiple_files=True)
+    uploaded_files = st.file_uploader(
+        "Upload log files",
+        type=["csv", "txt", "gz"],
+        accept_multiple_files=True,
+        help="Max file size: 2GB per file",
+    )
     do_clean = st.checkbox("Run cleaning", value=True)
     do_map = st.checkbox("Run mapping", value=True)
     do_fe = st.checkbox("Run feature engineering", value=True)
