@@ -176,7 +176,7 @@ class ComboOptimizer:
         ens.setdefault("OPTUNA_TRIALS", 30)
         ens.setdefault("WEIGHT_MODE", "dirichlet")
         ens.setdefault("MODE", "free")
-        ens.setdefault("MIN_MODELS", 1)
+        ens.setdefault("MIN_MODELS", 2)
         ens.setdefault("MAX_MODELS", None)
         ens.setdefault("PRUNING", True)
         ens.setdefault("DIRECTION", "maximize")
@@ -260,7 +260,7 @@ class ComboOptimizer:
             n_trials=int(self.ens.get("OPTUNA_TRIALS", 30)),
             weight_mode=self.ens.get("WEIGHT_MODE", "dirichlet"),
             mode=self.ens.get("MODE", "free"),
-            min_models=int(self.ens.get("MIN_MODELS", 1)),
+            min_models=int(self.ens.get("MIN_MODELS", 2)),
             max_models=self.ens.get("MAX_MODELS"),
             pruning=bool(self.ens.get("PRUNING", True)),
             direction=self.ens.get("DIRECTION", "maximize"),
@@ -536,7 +536,7 @@ def run_ensemble(
         n_trials=cfg.get("OPTUNA_TRIALS", 50),
         weight_mode=cfg.get("WEIGHT_MODE", "dirichlet"),
         mode=mode,
-        min_models=cfg.get("MIN_MODELS", 1),
+        min_models=cfg.get("MIN_MODELS", 2),
         max_models=cfg.get("MAX_MODELS", None),
         pruning=cfg.get("PRUNING", True),
         direction=cfg.get("DIRECTION", "maximize"),

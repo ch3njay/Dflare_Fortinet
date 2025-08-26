@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, Tuple, List
 import numpy as np
 from sklearn.model_selection import train_test_split
+from utils_labels import encode_crlevel_series, save_label_mapping
 
 # === 你專案內的模組 ===
 from training_pipeline.data_loader import DataLoader              # load_data(), prepare_xy_with_report()
@@ -62,7 +63,7 @@ class TrainingPipeline:
         self.config.setdefault("RANDOM_STATE", 42)
         self.config.setdefault("ENSEMBLE_SETTINGS", {
             "STACK_CV": 5, "VOTING": "soft", "THRESHOLD": 0.5,
-            "SEARCH": "voting_subsets", "SEARCH_MAX_SUBSET": 4, "SEARCH_TOPK": 3
+            "SEARCH": "voting_subsets", "SEARCH_MAX_SUBSET": 4, "SEARCH_TOPK": 3, "MIN_MODELS": 2
         })
         self.config.setdefault("OUTPUT_DIR", "./artifacts")
         self.config.setdefault("SAVE_BASE_MODELS", False)
@@ -142,6 +143,11 @@ class TrainingPipeline:
 
         # 取得欄位差異報告並顯示（第二次訊息同時在 DataLoader 內印摘要）
         X, y, report = DataLoader.prepare_xy_with_report(df, self.config, self.task_type)
+        if self.task_type == "multiclass":
+            y = encode_crlevel_series(y)
+            save_label_mapping(self.out_dir)
+        else:
+            y = y.astype("int32")
 
         test_size = float(self.config.get("VALID_SIZE", 0.2))
         random_state = int(self.config.get("RANDOM_STATE", 42))
@@ -152,10 +158,10 @@ class TrainingPipeline:
         # 第三次訊息：分集完成
         print(f"✅ 分割完成：訓練 {len(X_tr)}、驗證 {len(X_va)}")
 
-        if hasattr(y_tr, "values"):
-            y_tr = y_tr.values
-        if hasattr(y_va, "values"):
-            y_va = y_va.values
+        X_tr = X_tr.reset_index(drop=True)
+        X_va = X_va.reset_index(drop=True)
+        y_tr = y_tr.reset_index(drop=True)
+        y_va = y_va.reset_index(drop=True)
 
         return X_tr, X_va, y_tr, y_va
 
