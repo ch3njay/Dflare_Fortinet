@@ -27,9 +27,8 @@ st.set_page_config(
 st.markdown(
     f"""
     <style>
-
     .stApp {{
-        background-color: #f3f4f6;
+        background-color: #f5f7fa;
     }}
     div[data-testid="stSidebar"] {{
         width: {sidebar_width};
@@ -55,20 +54,6 @@ st.markdown(
     .menu-collapsed .nav-link {{
         justify-content: center;
     }}
-=======
-    .stApp {
-        background-color: #f5f7fa;
-    }
-    /* sidebar base style */
-    .menu-expanded .nav-link span {
-        display: inline-block;
-    }
-    .menu-collapsed .nav-link span {
-        display: none;
-    }
-    .menu-collapsed .nav-link {
-        justify-content: center;
-    }
 
     </style>
     """,
