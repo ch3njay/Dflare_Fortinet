@@ -1,0 +1,8 @@
+# === 將下列片段貼回 config.py 覆蓋該任務的 MODEL_PARAMS ===
+CONFIG_MULTICLASS['MODEL_PARAMS'] = {
+    'XGB': {'n_estimators': 189, 'max_depth': 8, 'learning_rate': 0.1898717379219999, 'subsample': 0.6875100692343238, 'colsample_bytree': 0.5147427892922118, 'tree_method': 'hist', 'device': 'cpu', 'use_label_encoder': False, 'eval_metric': 'mlogloss'},
+    'LGB': {'n_estimators': 360, 'max_depth': -1, 'learning_rate': 0.06919566270449405, 'num_leaves': 31},
+    'CAT': {'depth': 10, 'learning_rate': 0.0768152029814235, 'iterations': 249, 'task_type': 'GPU', 'devices': '0'},
+    'RF': {'n_estimators': 167, 'max_depth': 10},
+    'ET': {'n_estimators': 227, 'max_depth': 12},
+}
