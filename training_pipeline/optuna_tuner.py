@@ -15,10 +15,12 @@ from xgboost import XGBClassifier
 
 try:  # optional GPU acceleration
     import cupy as cp
+
     if getattr(cp, "__name__", "") != "cupy":  # fallback stubs
         cp = None  # type: ignore[assignment]
 except Exception:  # pragma: no cover - cupy is optional
     cp = None  # type: ignore[assignment]
+
 
 from .feature_policy import FeaturePolicy
 

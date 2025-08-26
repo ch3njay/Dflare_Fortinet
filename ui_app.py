@@ -27,6 +27,7 @@ st.set_page_config(
 st.markdown(
     f"""
     <style>
+
     .stApp {{
         background-color: #f3f4f6;
     }}
@@ -54,6 +55,21 @@ st.markdown(
     .menu-collapsed .nav-link {{
         justify-content: center;
     }}
+=======
+    .stApp {
+        background-color: #f5f7fa;
+    }
+    /* sidebar base style */
+    .menu-expanded .nav-link span {
+        display: inline-block;
+    }
+    .menu-collapsed .nav-link span {
+        display: none;
+    }
+    .menu-collapsed .nav-link {
+        justify-content: center;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -89,6 +105,11 @@ PAGE_DESCRIPTIONS = {
 with st.sidebar:
     st.title("D-FLARE system")
     st.markdown("整合訓練、ETL、推論與通知的威脅分析平台。")
+
+
+    if "menu_collapse" not in st.session_state:
+        st.session_state.menu_collapse = False
+
     if option_menu:
         if st.button("☰", key="menu_toggle"):
             st.session_state.menu_collapse = not st.session_state.menu_collapse
@@ -115,6 +136,7 @@ with st.sidebar:
                 },
             )
             st.markdown("</div>", unsafe_allow_html=True)
+
             st.markdown(
                 """
                 <script>
@@ -124,6 +146,7 @@ with st.sidebar:
                 """,
                 unsafe_allow_html=True,
             )
+
     else:  # Fallback to simple radio when option_menu missing
         selection = st.radio("Go to", list(PAGES.keys()))
 
