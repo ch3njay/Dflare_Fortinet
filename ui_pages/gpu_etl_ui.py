@@ -1,4 +1,6 @@
 import streamlit as st
+import threading
+import time
 from gpu_etl_pipeliner import run_pipeline
 
 def app() -> None:
@@ -23,8 +25,37 @@ def app() -> None:
             with open(tmp, "wb") as g:
                 g.write(f.getbuffer())
             paths.append(tmp)
-        try:
-            result = run_pipeline(paths, out_path=out_path, do_clean=do_clean, do_map=do_map, do_fe=do_fe, quiet=True)
-            st.success(f"ETL completed: {result}")
-        except Exception as e:
-            st.error(f"ETL failed: {e}")
+
+        progress = st.progress(0)
+        status = st.empty()
+        result = {"value": None, "error": None}
+
+        def _run():
+            try:
+                result["value"] = run_pipeline(
+                    paths,
+                    out_path=out_path,
+                    do_clean=do_clean,
+                    do_map=do_map,
+                    do_fe=do_fe,
+                    quiet=True,
+                )
+            except Exception as exc:  # pragma: no cover - runtime failure
+                result["error"] = exc
+
+        thread = threading.Thread(target=_run)
+        thread.start()
+        pct = 0
+        while thread.is_alive():
+            pct = (pct + 5) % 100
+            progress.progress(pct)
+            status.text(f"ETL in progress... {pct}%")
+            time.sleep(0.1)
+        thread.join()
+        if result["error"] is None:
+            progress.progress(100)
+            status.text("ETL completed")
+            st.success(f"ETL completed: {result['value']}")
+        else:
+            status.text("ETL failed")
+            st.error(f"ETL failed: {result['error']}")

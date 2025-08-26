@@ -1,4 +1,6 @@
 import io
+import threading
+import time
 import streamlit as st
 from . import _ensure_module
 _ensure_module("numpy", "numpy_stub")
@@ -27,16 +29,42 @@ def app() -> None:
         if data_file is None or binary_model is None or multi_model is None:
             st.error("Please upload data and model files")
             return
-        df = pd.read_csv(data_file)
-        binary_model.seek(0)
-        bin_clf = joblib.load(binary_model)
-        bin_pred = bin_clf.predict(df)
-        result = pd.DataFrame({"is_attack": bin_pred})
-        mask = result["is_attack"] == 1
-        if mask.any():
-            multi_model.seek(0)
-            mul_clf = joblib.load(multi_model)
-            cr_pred = mul_clf.predict(df[mask])
-            result.loc[mask, "crlevel"] = cr_pred
-        st.session_state["prediction_results"] = result
-        st.dataframe(result)
+
+        progress = st.progress(0)
+        status = st.empty()
+        result_holder = {"df": None, "error": None}
+
+        def _run():
+            try:
+                df = pd.read_csv(data_file)
+                binary_model.seek(0)
+                bin_clf = joblib.load(binary_model)
+                bin_pred = bin_clf.predict(df)
+                result = pd.DataFrame({"is_attack": bin_pred})
+                mask = result["is_attack"] == 1
+                if mask.any():
+                    multi_model.seek(0)
+                    mul_clf = joblib.load(multi_model)
+                    cr_pred = mul_clf.predict(df[mask])
+                    result.loc[mask, "crlevel"] = cr_pred
+                result_holder["df"] = result
+            except Exception as exc:  # pragma: no cover - runtime failure
+                result_holder["error"] = exc
+
+        thread = threading.Thread(target=_run)
+        thread.start()
+        pct = 0
+        while thread.is_alive():
+            pct = (pct + 5) % 100
+            progress.progress(pct)
+            status.text(f"Inference in progress... {pct}%")
+            time.sleep(0.1)
+        thread.join()
+        if result_holder["error"] is None:
+            progress.progress(100)
+            status.text("Inference completed")
+            st.session_state["prediction_results"] = result_holder["df"]
+            st.dataframe(result_holder["df"])
+        else:
+            status.text("Inference failed")
+            st.error(f"Inference failed: {result_holder['error']}")
