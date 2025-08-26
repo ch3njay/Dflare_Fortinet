@@ -9,7 +9,12 @@ from notifier import notify_from_csv, send_discord
 
 
 def app() -> None:
-    st.title("🔔 Notification System")
+    st.title("Notification System")
+    st.info(
+        "Select a folder to monitor for CSV/TXT/log files including compressed "
+        "formats (.gz, .zip). Files are processed after 5 seconds of inactivity, "
+        "and only new data is read to conserve memory."
+    )
 
     st.sidebar.header("Settings")
     webhook = st.sidebar.text_input("Discord Webhook URL", key="discord_webhook")
