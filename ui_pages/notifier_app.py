@@ -11,28 +11,28 @@ from notifier import notify_from_csv, send_discord
 def app() -> None:
     st.title("Notification System")
     st.info(
-        "Select a folder to monitor for CSV/TXT/log files including compressed "
-        "formats (.gz, .zip). Files are processed after 5 seconds of inactivity, "
-        "and only new data is read to conserve memory."
+        "Upload a result CSV to send high-risk events to Discord. Configure "
+        "webhook and AI settings in the expandable section below."
     )
 
-    st.sidebar.header("Settings")
-    webhook = st.sidebar.text_input("Discord Webhook URL", key="discord_webhook")
-    gemini_key = st.sidebar.text_input("Gemini API Key", type="password", key="gemini_key")
-    st.sidebar.text_input("LINE Notify Token", key="line_token")
-    st.sidebar.info("LINE notifications currently disabled")
+    with st.expander("Notification Settings", expanded=False):
+        webhook = st.text_input("Discord Webhook URL", key="discord_webhook")
+        gemini_key = st.text_input(
+            "Gemini API Key", type="password", key="gemini_key"
+        )
+        st.text_input("LINE Notify Token", key="line_token")
+        st.info("LINE notifications currently disabled")
 
-    risk_levels = st.sidebar.multiselect("High-risk levels", [1, 2, 3, 4], default=[3, 4])
-    dedupe_strategy = st.sidebar.selectbox(
-        "Deduplication strategy", ["Filename + mtime", "File hash"]
-    )
+        risk_levels = st.multiselect("High-risk levels", [1, 2, 3, 4], default=[3, 4])
+        dedupe_strategy = st.selectbox(
+            "Deduplication strategy", ["Filename + mtime", "File hash"]
+        )
 
     dedupe_cache = st.session_state.setdefault(
         "dedupe_cache", {"strategy": "mtime", "keys": set()}
     )
     dedupe_cache["strategy"] = "hash" if dedupe_strategy == "File hash" else "mtime"
-
-    st.subheader("Actions")
+    st.caption("Actions")
     if st.button("Send Discord test notification"):
         if webhook:
             ok, info = send_discord(webhook, "This is a test notification from D-FLARE.")
