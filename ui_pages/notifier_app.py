@@ -54,6 +54,7 @@ def app() -> None:
             if not webhook:
                 st.warning("Please set the Discord Webhook URL first")
             else:
+                progress = st.progress(0)
                 results = notify_from_csv(
                     str(tmp_path),
                     webhook,
@@ -61,7 +62,9 @@ def app() -> None:
                     risk_levels={str(r) for r in risk_levels},
                     ui_log=st.write,
                     dedupe_cache=dedupe_cache,
+                    progress_cb=lambda frac: progress.progress(int(frac * 100)),
                 )
+                progress.progress(100)
                 success = sum(1 for _, ok, _ in results if ok)
                 fail = sum(1 for _, ok, _ in results if not ok)
                 st.info(f"Succeeded {success}, failed {fail}")

@@ -21,6 +21,15 @@ from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 
+try:  # optional GPU arrays
+    import cupy as cp  # type: ignore
+    CUPY_AVAILABLE = getattr(cp, "__name__", "") == "cupy"
+    if not CUPY_AVAILABLE:
+        cp = None  # type: ignore[assignment]
+except Exception:  # pragma: no cover - cupy may not be installed
+    cp = None  # type: ignore[assignment]
+    CUPY_AVAILABLE = False
+
 
 class ModelBuilder:
     def __init__(
@@ -40,7 +49,6 @@ class ModelBuilder:
         # -------- 降噪（不影響錯誤拋出）---------
         warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
         warnings.filterwarnings("ignore", message=".*gpu_hist.*deprecated.*")
-        warnings.filterwarnings("ignore", message=".*Falling back to prediction using DMatrix.*")
         warnings.filterwarnings("ignore", message=".*No further splits with positive gain.*")
 
     # ============================================================
@@ -94,6 +102,8 @@ class ModelBuilder:
         """
         best_params: Dict[str, dict] = {}
         rng = self.config.get("RANDOM_STATE", 42)
+        X = np.asarray(X)
+        y = np.asarray(y)
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=rng)
         pruner = self.pruner
 
@@ -141,16 +151,43 @@ class ModelBuilder:
                             "num_class": int(np.unique(y).shape[0]),
                         }
                     )
-                return _safe_cv_score(XGBClassifier(**params))
+
+                skf_xgb = StratifiedKFold(n_splits=5, shuffle=True, random_state=rng)
+                scores = []
+                for tr_idx, va_idx in skf_xgb.split(X, y):
+                    X_tr_arr, X_va_arr = X[tr_idx], X[va_idx]
+                    y_tr_arr, y_va_arr = y[tr_idx], y[va_idx]
+                    gpu_enabled = params.get("device") == "cuda" and CUPY_AVAILABLE
+                    if gpu_enabled:
+                        X_tr_np = cp.asarray(X_tr_arr)
+                        X_va_np = cp.asarray(X_va_arr)
+                        y_tr_np = cp.asarray(y_tr_arr)
+                        y_va_np = cp.asarray(y_va_arr)
+                    else:
+                        X_tr_np = X_tr_arr
+                        X_va_np = X_va_arr
+                        y_tr_np = y_tr_arr
+                        y_va_np = y_va_arr
+                    clf = XGBClassifier(**params)
+                    clf.fit(X_tr_np, y_tr_np)
+                    pred = clf.predict(X_va_np)
+                    if gpu_enabled:
+                        pred = cp.asnumpy(pred)
+                        y_va_eval = cp.asnumpy(y_va_np)
+                    else:
+                        y_va_eval = y_va_np
+                    scores.append(np.mean(pred == y_va_eval))
+                return float(np.mean(scores))
 
         if self.use_optuna:
             print("🔍 Optuna 搜尋 XGBoost ...")
             study_xgb = optuna.create_study(direction="maximize", pruner=pruner)
             study_xgb.optimize(xgb_objective, n_trials=self.max_trials_xgb, show_progress_bar=True)
+            device_setting = "cuda" if CUPY_AVAILABLE else "cpu"
             best_params["XGB"] = {
                 **study_xgb.best_params,
                 "tree_method": "hist",
-                "device": "cuda",
+                "device": device_setting,
                 "n_jobs": -1,
                 "random_state": rng,
                 **(

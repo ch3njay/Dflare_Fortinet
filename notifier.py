@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import os
-from typing import Dict, Iterable, Optional, Set, Tuple
+from typing import Callable, Dict, Iterable, Optional, Set, Tuple
 
 try:  # pragma: no cover - best effort import
     import pandas as pd
-except Exception:  # pragma: no cover - fallback
+    if not hasattr(pd, "read_csv"):  # stub detected
+        pd = None  # type: ignore[assignment]
+except Exception:  # pragma: no cover - fallback when pandas unavailable
     pd = None
 try:  # pragma: no cover - best effort import
     import requests
@@ -109,6 +111,7 @@ def notify_from_csv(
     risk_levels: Iterable = ("3", "4"),
     ui_log=None,
     dedupe_cache: Optional[Dict] = None,
+    progress_cb: Optional[Callable[[float], None]] = None,
 ):
     """Read a Fortinet event CSV and push high-risk rows to Discord."""
 
@@ -155,7 +158,8 @@ def notify_from_csv(
 
     risk_ints = {normalize_crlevel(x) for x in risk_levels}
     results = []
-    for row in rows:
+    total = len(rows)
+    for idx, row in enumerate(rows, 1):
         cr_int = normalize_crlevel(row.get(cr_col))
         if cr_int is None or cr_int not in risk_ints:
             continue
@@ -178,6 +182,8 @@ def notify_from_csv(
         results.append((message, ok, info))
         if ui_log:
             ui_log(f"Sent event: {srcip} - {'success' if ok else 'failure'}")
+        if progress_cb:
+            progress_cb(idx / total if total else 1.0)
 
     if not results and ui_log:
         ui_log("No events matched the criteria.")

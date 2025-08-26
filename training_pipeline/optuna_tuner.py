@@ -13,6 +13,13 @@ from sklearn.model_selection import StratifiedKFold
 
 from xgboost import XGBClassifier
 
+try:  # optional GPU acceleration
+    import cupy as cp
+    if getattr(cp, "__name__", "") != "cupy":  # fallback stubs
+        cp = None  # type: ignore[assignment]
+except Exception:  # pragma: no cover - cupy is optional
+    cp = None  # type: ignore[assignment]
+
 from .feature_policy import FeaturePolicy
 
 # -------------------------
@@ -57,16 +64,11 @@ def build_objective(
         )
 
         # XGB 版本相容：device / tree_method
-        if use_gpu:
-            # XGBoost>=2 可用 device='cuda'；1.x 可用 tree_method='gpu_hist'
-            params.update({
-                "tree_method": "gpu_hist",
-                "device": "cuda",
-            })
+        gpu_enabled = use_gpu and cp is not None
+        if gpu_enabled:
+            params.update({"tree_method": "gpu_hist", "device": "cuda"})
         else:
-            params.update({
-                "tree_method": "hist",
-            })
+            params.update({"tree_method": "hist"})
 
         # 任務型態
         if policy.task_type == "binary":
@@ -95,28 +97,50 @@ def build_objective(
             X_tr = policy.align_like(X_tr)
             X_va = policy.align_like(X_va)
 
+            if gpu_enabled:
+                X_tr_arr = cp.asarray(X_tr.values)
+                y_tr_arr = cp.asarray(y_tr)
+                X_va_arr = cp.asarray(X_va.values)
+                y_va_arr = cp.asarray(y_va)
+            else:
+                X_tr_arr = X_tr.values
+                y_tr_arr = y_tr
+                X_va_arr = X_va.values
+                y_va_arr = y_va
+
             clf = XGBClassifier(**params, random_state=42)
             clf.fit(
-                X_tr, y_tr,
-                eval_set=[(X_va, y_va)],
-                verbose=False
+                X_tr_arr,
+                y_tr_arr,
+                eval_set=[(X_va_arr, y_va_arr)],
+                verbose=False,
             )
 
             # ---- 評分 ----
             if policy.task_type == "binary":
-                pred = clf.predict_proba(X_va)[:, 1]
+                pred = clf.predict_proba(X_va_arr)[:, 1]
+                if gpu_enabled:
+                    pred = cp.asnumpy(pred)
+                    y_va_eval = cp.asnumpy(y_va_arr)
+                else:
+                    y_va_eval = y_va_arr
                 if metric == "roc_auc":
-                    sc = roc_auc_score(y_va, pred)
+                    sc = roc_auc_score(y_va_eval, pred)
                 elif metric == "f1":
-                    sc = f1_score(y_va, (pred >= 0.5).astype(int))
+                    sc = f1_score(y_va_eval, (pred >= 0.5).astype(int))
                 else:
                     raise ValueError(f"未知 metric: {metric}")
             else:
-                pred = clf.predict_proba(X_va)
+                pred = clf.predict_proba(X_va_arr)
+                if gpu_enabled:
+                    pred = cp.asnumpy(pred)
+                    y_va_eval = cp.asnumpy(y_va_arr)
+                else:
+                    y_va_eval = y_va_arr
                 if metric == "roc_auc":
-                    sc = roc_auc_score(y_va, pred, multi_class="ovr")
+                    sc = roc_auc_score(y_va_eval, pred, multi_class="ovr")
                 elif metric == "f1":
-                    sc = f1_score(y_va, pred.argmax(axis=1), average="macro")
+                    sc = f1_score(y_va_eval, pred.argmax(axis=1), average="macro")
                 else:
                     raise ValueError(f"未知 metric: {metric}")
 
