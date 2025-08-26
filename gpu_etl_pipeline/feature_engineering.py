@@ -171,6 +171,25 @@ def _load_json_if_exists(path):
             print(Fore.YELLOW + f"⚠️ 無法讀取 Top-K 字典：{path}")
     return None
 
+
+def _read_manifest(run_dir: str = None) -> dict:
+    """嘗試讀取 run_dir/manifest.json；找不到時回傳空 dict。"""
+    candidates = []
+    if run_dir:
+        candidates.append(os.path.join(run_dir, "manifest.json"))
+    candidates += [
+        os.path.abspath("./manifest.json"),
+        os.path.join(os.getcwd(), "manifest.json"),
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return {}
+
 # ---- DateTime 解析設定（一次偵測，全程沿用）----
 DATETIME_COL = "datetime"
 PREFERRED_DT_FORMATS = [
@@ -621,13 +640,30 @@ def main(in_csv: str = None,
          batch_mode: bool = False,
          batch_size: int = 100_000,
          approx_mode: bool = False,
-         quiet: bool = True):
+         quiet: bool = True,
+         run_dir: str = None,
+         use_manifest: bool = True,
+         **kwargs):
     global CSV_CHUNK_SIZE, MAX_STATE_SIZE, PRUNE_FACTOR
     print(Style.BRIGHT + "==== 特徵工程（gpu_feature_engineering）====")
 
     # --- I/O ---
-    in_csv  = in_csv  or (input(Fore.CYAN + f"輸入檔（{DEFAULT_INPUT}）或 Enter 取預設：").strip() or DEFAULT_INPUT)
+    src_from_manifest = None
+    if use_manifest:
+        m = _read_manifest(run_dir)
+        try:
+            src_from_manifest = m.get("map", {}).get("output", None)
+        except Exception:
+            src_from_manifest = None
+
+    in_csv = src_from_manifest or in_csv or (input(Fore.CYAN + f"輸入檔（{DEFAULT_INPUT}）或 Enter 取預設：").strip() or DEFAULT_INPUT)
     out_csv = out_csv or (input(Fore.CYAN + f"輸出檔（{DEFAULT_OUTPUT}）或 Enter 取預設：").strip() or DEFAULT_OUTPUT)
+
+    if run_dir:
+        dir_fe = os.path.join(run_dir, "02_fe")
+        os.makedirs(dir_fe, exist_ok=True)
+        if not os.path.isabs(out_csv):
+            out_csv = os.path.join(dir_fe, os.path.basename(out_csv))
 
     if not os.path.exists(in_csv):
         print(Fore.RED + f"❌ 找不到輸入檔：{in_csv}")
@@ -697,4 +733,19 @@ def main(in_csv: str = None,
         check_and_flush("gpu_feature_engineering", chunk)
 
     print(Fore.GREEN + f"✅ 完成特徵工程 → {out_csv}（累計 {total} 筆）")
+
+    if run_dir:
+        m = _read_manifest(run_dir)
+        m.setdefault("fe", {})
+        m["fe"]["input"] = os.path.abspath(in_csv)
+        m["fe"]["output"] = os.path.abspath(out_csv)
+        try:
+            with open(os.path.join(run_dir, "manifest.json"), "w", encoding="utf-8") as f:
+                json.dump(m, f, ensure_ascii=False, indent=2)
+            if not quiet:
+                print(Style.BRIGHT + Fore.GREEN + "🧭 manifest.fe 已更新")
+        except Exception as e:
+            if not quiet:
+                print(Fore.YELLOW + f"⚠️ manifest.fe 寫入失敗：{e}")
+
     return out_csv
