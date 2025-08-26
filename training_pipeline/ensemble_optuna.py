@@ -9,6 +9,7 @@ import itertools
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
+import pandas as pd
 from sklearn.base import BaseEstimator, clone
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
@@ -38,6 +39,12 @@ def _normalize(weights: Sequence[float]) -> np.ndarray:
     return w
 
 
+
+def _ensure_numpy_xy(X, Y):
+    X_np = X.to_numpy() if isinstance(X, (pd.DataFrame, pd.Series)) else np.asarray(X)
+    y_np = Y.to_numpy().reshape(-1) if isinstance(Y, (pd.Series, pd.DataFrame)) else np.asarray(Y).reshape(-1)
+    return X_np, y_np
+
 # ---------------------------------------------------------------------------
 # Core scorer
 # ---------------------------------------------------------------------------
@@ -56,18 +63,22 @@ def score_combo(
     y_valid=None,
 ) -> float:
     """Evaluate a weighted combination using CV and optional hold-out validation."""
+    X_np, y_np = _ensure_numpy_xy(X, y)
+    Xv_np = yv_np = None
+    if X_valid is not None and y_valid is not None:
+        Xv_np, yv_np = _ensure_numpy_xy(X_valid, y_valid)
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     fold_scores: List[float] = []
-    for fold, (tr_idx, va_idx) in enumerate(cv.split(X, y)):
+    for fold, (tr_idx, va_idx) in enumerate(cv.split(X_np, y_np)):
         preds = []
         for name in names:
             est = clone(estimators[name])
             if hasattr(est, "get_params") and "random_state" in est.get_params():
                 est.set_params(random_state=seed + fold)
-            est.fit(X[tr_idx], y[tr_idx])
-            preds.append(est.predict_proba(X[va_idx]))
+            est.fit(X_np[tr_idx], y_np[tr_idx])
+            preds.append(est.predict_proba(X_np[va_idx]))
         proba = np.average(preds, axis=0, weights=weights)
-        fold_score = auc(task, y[va_idx], proba)
+        fold_score = auc(task, y_np[va_idx], proba)
         fold_scores.append(fold_score)
         if trial is not None:
             trial.report(fold_score, fold)
@@ -75,16 +86,16 @@ def score_combo(
                 raise optuna.TrialPruned()
     cv_score = float(np.mean(fold_scores))
 
-    if X_valid is not None and y_valid is not None:
+    if Xv_np is not None and yv_np is not None:
         preds_v = []
         for name in names:
             est = clone(estimators[name])
             if hasattr(est, "get_params") and "random_state" in est.get_params():
                 est.set_params(random_state=seed)
-            est.fit(X, y)
-            preds_v.append(est.predict_proba(X_valid))
+            est.fit(X_np, y_np)
+            preds_v.append(est.predict_proba(Xv_np))
         proba_v = np.average(preds_v, axis=0, weights=weights)
-        valid_score = auc(task, y_valid, proba_v)
+        valid_score = auc(task, yv_np, proba_v)
         return 0.3 * cv_score + 0.7 * valid_score
     return cv_score
 
@@ -103,7 +114,7 @@ class OptunaEnsembler:
     n_trials: int = 50
     weight_mode: str = "dirichlet"
     mode: str = "free"  # "free" or "fixed"
-    min_models: int = 1
+    min_models: int = 2
     max_models: Optional[int] = None
     pruning: bool = True
     direction: str = "maximize"

@@ -36,38 +36,41 @@ class Evaluator:
         if name:
             print(f"\n==================== [ {name} 評估結果 ] ====================")
 
+        X_eval = X.to_numpy() if hasattr(X, "to_numpy") else np.asarray(X)
+        y_true_np = y_true.to_numpy().reshape(-1) if hasattr(y_true, "to_numpy") else np.asarray(y_true).reshape(-1)
+
         # 預測
-        y_pred = model.predict(X)
+        y_pred = model.predict(X_eval)
 
         # ====== 分類報告與基本指標（靜音 UndefinedMetricWarning） ======
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
-            acc = accuracy_score(y_true, y_pred)
+            acc = accuracy_score(y_true_np, y_pred)
             if self.task == "binary":
-                f1 = f1_score(y_true, y_pred, average="binary", zero_division=0)
-                prec = precision_score(y_true, y_pred, average="binary", zero_division=0)
-                rec = recall_score(y_true, y_pred, average="binary", zero_division=0)
-                report = classification_report(y_true, y_pred, digits=4, zero_division=0)
+                f1 = f1_score(y_true_np, y_pred, average="binary", zero_division=0)
+                prec = precision_score(y_true_np, y_pred, average="binary", zero_division=0)
+                rec = recall_score(y_true_np, y_pred, average="binary", zero_division=0)
+                report = classification_report(y_true_np, y_pred, digits=4, zero_division=0)
             else:
-                f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
-                prec = precision_score(y_true, y_pred, average="macro", zero_division=0)
-                rec = recall_score(y_true, y_pred, average="macro", zero_division=0)
-                report = classification_report(y_true, y_pred, digits=4, zero_division=0)
+                f1 = f1_score(y_true_np, y_pred, average="macro", zero_division=0)
+                prec = precision_score(y_true_np, y_pred, average="macro", zero_division=0)
+                rec = recall_score(y_true_np, y_pred, average="macro", zero_division=0)
+                report = classification_report(y_true_np, y_pred, digits=4, zero_division=0)
 
         # ====== AUC（binary / multiclass OVR） ======
         auc = np.nan
         try:
             if hasattr(model, "predict_proba"):
-                proba = model.predict_proba(X)
+                proba = model.predict_proba(X_eval)
                 if self.task == "binary":
                     # 取正類索引為 1；若 classes_ 不含 1，用最後一類
                     pos_idx = 1
                     if hasattr(model, "classes_"):
                         cls = list(model.classes_)
                         pos_idx = cls.index(1) if 1 in cls else (len(cls) - 1)
-                    auc = roc_auc_score(y_true, proba[:, pos_idx])
+                    auc = roc_auc_score(y_true_np, proba[:, pos_idx])
                 else:
-                    auc = roc_auc_score(y_true, proba, multi_class="ovr")
+                    auc = roc_auc_score(y_true_np, proba, multi_class="ovr")
         except Exception:
             pass  # 保留 auc=nan
 
@@ -80,7 +83,7 @@ class Evaluator:
         print("📋 分類報告：")
         print(report)
 
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true_np, y_pred)
         print("📝 混淆矩陣：")
         print(cm)
 

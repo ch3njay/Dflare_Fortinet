@@ -11,6 +11,7 @@ from typing import Dict, Optional
 
 import warnings
 import numpy as np
+import pandas as pd
 import optuna
 from optuna.pruners import MedianPruner
 
@@ -31,6 +32,12 @@ except Exception:  # pragma: no cover - cupy may not be installed
     cp = None  # type: ignore[assignment]
 
     CUPY_AVAILABLE = False
+
+def _to_numpy(X, y):
+    X_np = X.to_numpy() if hasattr(X, 'to_numpy') else np.asarray(X)
+    y_np = y.to_numpy().reshape(-1) if hasattr(y, 'to_numpy') else np.asarray(y).reshape(-1)
+    return X_np, y_np
+
 
 
 class ModelBuilder:
@@ -104,8 +111,8 @@ class ModelBuilder:
         """
         best_params: Dict[str, dict] = {}
         rng = self.config.get("RANDOM_STATE", 42)
-        X = np.asarray(X)
-        y = np.asarray(y)
+        X, y = _to_numpy(X, y)
+        y = y.astype("int32")
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=rng)
         pruner = self.pruner
 
