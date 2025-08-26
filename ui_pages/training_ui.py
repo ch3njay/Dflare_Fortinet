@@ -1,4 +1,6 @@
 import streamlit as st
+import threading
+import time
 from . import _ensure_module
 _ensure_module("numpy", "numpy_stub")
 _ensure_module("pandas", "pandas_stub")
@@ -31,8 +33,30 @@ def app() -> None:
             optimize_ensemble=optimize_ensemble,
             use_tuned_for_training=use_tuned_for_training,
         )
-        try:
-            pipeline.run(tmp_path)
+        progress = st.progress(0)
+        status = st.empty()
+
+        result = {"error": None}
+
+        def _run():
+            try:
+                pipeline.run(tmp_path)
+            except Exception as exc:  # pragma: no cover - runtime failure
+                result["error"] = exc
+
+        thread = threading.Thread(target=_run)
+        thread.start()
+        pct = 0
+        while thread.is_alive():
+            pct = (pct + 5) % 100
+            progress.progress(pct)
+            status.text(f"Training in progress... {pct}%")
+            time.sleep(0.1)
+        thread.join()
+        if result["error"] is None:
+            progress.progress(100)
+            status.text("Training finished")
             st.success("Training finished")
-        except Exception as e:
-            st.error(f"Training failed: {e}")
+        else:
+            status.text("Training failed")
+            st.error(f"Training failed: {result['error']}")
