@@ -23,8 +23,13 @@ from catboost import CatBoostClassifier
 
 try:  # optional GPU arrays
     import cupy as cp  # type: ignore
-    CUPY_AVAILABLE = True
+
+    CUPY_AVAILABLE = getattr(cp, "__name__", "") == "cupy"
+    if not CUPY_AVAILABLE:
+        cp = None  # type: ignore[assignment]
 except Exception:  # pragma: no cover - cupy may not be installed
+    cp = None  # type: ignore[assignment]
+
     CUPY_AVAILABLE = False
 
 

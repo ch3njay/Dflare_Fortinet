@@ -8,7 +8,9 @@ from typing import Callable, Dict, Iterable, Optional, Set, Tuple
 
 try:  # pragma: no cover - best effort import
     import pandas as pd
-except Exception:  # pragma: no cover - fallback
+    if not hasattr(pd, "read_csv"):  # stub detected
+        pd = None  # type: ignore[assignment]
+except Exception:  # pragma: no cover - fallback when pandas unavailable
     pd = None
 try:  # pragma: no cover - best effort import
     import requests

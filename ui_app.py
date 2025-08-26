@@ -13,16 +13,49 @@ from ui_pages import (
     notifier_app,
 )
 
+if "menu_collapse" not in st.session_state:
+    st.session_state.menu_collapse = False
+
+sidebar_width = "72px" if st.session_state.menu_collapse else "260px"
+
 st.set_page_config(
     page_title="D-FLARE Dashboard",
     page_icon=":bar_chart:",
     layout="wide",
 )
-# Upload size limit configured in .streamlit/config.toml
 
 st.markdown(
-    """
+    f"""
     <style>
+
+    .stApp {{
+        background-color: #f3f4f6;
+    }}
+    div[data-testid="stSidebar"] {{
+        width: {sidebar_width};
+        background-color: #1f2937;
+        transition: width 0.3s ease;
+    }}
+    div[data-testid="stSidebar"] .nav-link {{
+        color: #e5e7eb;
+    }}
+    div[data-testid="stSidebar"] .nav-link:hover {{
+        background-color: #374151;
+    }}
+    div[data-testid="stSidebar"] .nav-link-selected {{
+        background-color: #2563eb;
+        color: #ffffff;
+    }}
+    .menu-expanded .nav-link span {{
+        display: inline-block;
+    }}
+    .menu-collapsed .nav-link span {{
+        display: none;
+    }}
+    .menu-collapsed .nav-link {{
+        justify-content: center;
+    }}
+=======
     .stApp {
         background-color: #f5f7fa;
     }
@@ -36,6 +69,7 @@ st.markdown(
     .menu-collapsed .nav-link {
         justify-content: center;
     }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -72,8 +106,10 @@ with st.sidebar:
     st.title("D-FLARE system")
     st.markdown("整合訓練、ETL、推論與通知的威脅分析平台。")
 
+
     if "menu_collapse" not in st.session_state:
         st.session_state.menu_collapse = False
+
     if option_menu:
         if st.button("☰", key="menu_toggle"):
             st.session_state.menu_collapse = not st.session_state.menu_collapse
@@ -100,6 +136,17 @@ with st.sidebar:
                 },
             )
             st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown(
+                """
+                <script>
+                const links = window.parent.document.querySelectorAll('.nav-link');
+                links.forEach((el) => el.setAttribute('title', el.textContent));
+                </script>
+                """,
+                unsafe_allow_html=True,
+            )
+
     else:  # Fallback to simple radio when option_menu missing
         selection = st.radio("Go to", list(PAGES.keys()))
 
