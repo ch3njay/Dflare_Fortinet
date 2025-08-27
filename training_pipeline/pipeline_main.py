@@ -175,8 +175,10 @@ class TrainingPipeline:
         )
 
         # Case 1：使用 Optuna 結果建模（內部自動 run_optuna）
+        task_name = "binary" if self.task_type == "binary" else "multiclass"
+
         if self.optuna_enabled and self.optimize_base and self.use_tuned_for_training:
-            models = mb.build_models(X_train, y_train, task=("binary" if self.task_type == "binary" else "multiclass"))
+            models = mb.build_models(X_train, y_train, task=task_name)
             return models
 
         # Case 2：執行 Optuna（僅記錄、不套用），再用 config 建模
@@ -186,12 +188,11 @@ class TrainingPipeline:
                 print("🧪 Optuna 已執行（僅記錄結果，不套用於後續訓練）。")
             except Exception as e:
                 print(f"⚠️ Optuna 執行失敗（僅記錄階段），將跳過：{e}")
-            # 直接用 config 參數建模
-            models = mb.build_models(None, None, task=("binary" if self.task_type == "binary" else "multiclass"))
+            models = mb.build_models(X_train, y_train, task=task_name)
             return models
 
         # Case 3：完全不啟用 Optuna
-        models = mb.build_models(None, None, task=("binary" if self.task_type == "binary" else "multiclass"))
+        models = mb.build_models(X_train, y_train, task=task_name)
         return models
 
     # ---------- public ----------

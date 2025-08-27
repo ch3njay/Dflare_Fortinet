@@ -1,24 +1,47 @@
 import streamlit as st
 import threading
 import time
+import os
 from . import _ensure_module
+
 _ensure_module("numpy", "numpy_stub")
+
 _ensure_module("pandas", "pandas_stub")
-import pandas as pd
+
 from training_pipeline.pipeline_main import TrainingPipeline
 
 def app() -> None:
     st.title("Training Pipeline")
+
     uploaded_file = st.file_uploader(
         "Upload training CSV",
         type=["csv"],
         help="Max file size: 2GB",
     )
     task_type = st.selectbox("Task type", ["binary", "multiclass"])
+
     optuna_enabled = st.checkbox("Enable Optuna", value=False)
-    optimize_base = st.checkbox("Optimize base models", value=False)
-    optimize_ensemble = st.checkbox("Optimize ensemble", value=False)
-    use_tuned_for_training = st.checkbox("Use tuned params for training", value=False)
+    optimize_base = False
+    optimize_ensemble = False
+    use_tuned_for_training = False
+    ensemble_mode = "free"
+
+    if optuna_enabled:
+        optimize_base = st.checkbox("Optimize base models", value=False)
+        optimize_ensemble = st.checkbox("Optimize ensemble", value=False)
+
+        if optimize_base or optimize_ensemble:
+            use_tuned_for_training = st.checkbox("Use tuned params for training", value=True)
+            if optimize_ensemble and use_tuned_for_training:
+                ensemble_mode = st.selectbox(
+                    "Ensemble mode",
+                    ["free", "fixed"],
+                    help="Optuna ensemble search mode",
+                )
+        else:
+            st.info("Optuna disabled because no optimization scope selected.")
+            optuna_enabled = False
+
     if st.button("Run training"):
         if uploaded_file is None:
             st.error("Please upload a CSV file")
@@ -33,14 +56,15 @@ def app() -> None:
             optimize_ensemble=optimize_ensemble,
             use_tuned_for_training=use_tuned_for_training,
         )
+        pipeline.config.setdefault("ENSEMBLE_SETTINGS", {})["MODE"] = ensemble_mode
         progress = st.progress(0)
         status = st.empty()
 
-        result = {"error": None}
+        result = {"error": None, "output": None}
 
         def _run():
             try:
-                pipeline.run(tmp_path)
+                result["output"] = pipeline.run(tmp_path)
             except Exception as exc:  # pragma: no cover - runtime failure
                 result["error"] = exc
 
@@ -57,6 +81,21 @@ def app() -> None:
             progress.progress(100)
             status.text("Training finished")
             st.success("Training finished")
+
+            artifacts_dir = result["output"].get("artifacts_dir") if result["output"] else None
+            if artifacts_dir:
+                model_path = os.path.join(artifacts_dir, "models", "ensemble_best.joblib")
+                if os.path.exists(model_path):
+                    with open(model_path, "rb") as f:
+                        model_bytes = f.read()
+                    st.download_button(
+                        "Download ensemble model",
+                        model_bytes,
+                        file_name="ensemble_best.joblib",
+                    )
+                    st.info(f"Artifacts saved to: {artifacts_dir}")
+                else:
+                    st.warning("Model file not found in artifacts directory.")
         else:
             status.text("Training failed")
             st.error(f"Training failed: {result['error']}")
