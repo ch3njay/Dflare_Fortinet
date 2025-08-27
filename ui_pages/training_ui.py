@@ -5,6 +5,7 @@ import os
 import io
 import contextlib
 import queue
+
 from . import _ensure_module
 
 _ensure_module("numpy", "numpy_stub")
@@ -65,6 +66,7 @@ def app() -> None:
         log_box = st.empty()
 
         result = {"error": None, "output": None}
+
         log_queue: "queue.Queue[str]" = queue.Queue()
 
         class _QueueStream(io.TextIOBase):
@@ -80,6 +82,7 @@ def app() -> None:
                 stream = _QueueStream()
                 with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
                     result["output"] = pipeline.run(tmp_path)
+
             except Exception as exc:  # pragma: no cover - runtime failure
                 result["error"] = exc
 
