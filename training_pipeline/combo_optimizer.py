@@ -181,6 +181,8 @@ class ComboOptimizer:
         ens.setdefault("PRUNING", True)
         ens.setdefault("DIRECTION", "maximize")
         ens.setdefault("SEED", 42)
+        if not self.use_optuna:
+            ens.pop("OPTUNA_TRIALS", None)
         self.ens = ens
 
         # 供 Stacking 組成解讀用的類別列表（保持決定式）
@@ -188,6 +190,8 @@ class ComboOptimizer:
 
     def optimize(self) -> Dict[str, Any]:
         print(f"⚙️  Ensemble 設定載入完成：{self.ens}")
+        if not self.use_optuna:
+            print("🚫 Optuna 未啟用，使用既定集成策略。")
 
         voting_mode = str(self.ens.get("VOTING", "soft")).lower()
         stack_cv = int(self.ens.get("STACK_CV", 5))
@@ -209,7 +213,7 @@ class ComboOptimizer:
         # ============ 分支二：固定子集枚舉 ============ 
         if voting_mode in ("soft", "hard"):
             if self.ens.get("SEARCH", "none") == "voting_subsets":
-                print("🧪 集成優化：使用固定子集枚舉搜尋（Top-K）。")
+                print("🔍 集成搜尋：使用固定子集枚舉搜尋（Top-K）。")
                 results = self._search_voting_subsets(safe_estimators, voting_mode)
                 # 以最佳名稱組合重訓並保存（避免把 estimator 物件寫入 JSON）
                 best_names = results["best_names"]
