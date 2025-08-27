@@ -6,6 +6,11 @@ import warnings
 from typing import Dict, Any, Tuple
 
 from sklearn.exceptions import ConvergenceWarning
+try:
+    from lightgbm.basic import LightGBMError
+except Exception:  # pragma: no cover - LightGBM may be optional
+    class LightGBMError(Exception):
+        pass
 
 # 靜音部分無關緊要的警告，保留你原有輸出風格
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -39,8 +44,19 @@ class Trainer:
 
     def _fit_silent(self, est, X, y):
         # 維持 sklearn 風格，避免雜訊輸出
-        est.fit(X, y)
-        return est
+        try:
+            est.fit(X, y)
+            return est
+        except LightGBMError as e:
+            msg = str(e)
+            if "best_split_info.left_count" in msg and hasattr(est, "set_params"):
+                try:
+                    est.set_params(device_type="cpu")
+                    est.fit(X, y)
+                    return est
+                except LightGBMError:
+                    pass
+            raise
 
 
     # ===================== Data Sanitation =====================
