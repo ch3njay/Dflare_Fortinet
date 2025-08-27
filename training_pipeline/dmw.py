@@ -93,37 +93,24 @@ def _set_params_if_supported(est, **kwargs):
     return est
 
 # -----------------------------
-# 遞迴：OOF 階段用的安全 clone（LGBM→CPU+安全）
+# 遞迴：OOF 階段用的 clone（保留結構）
 # -----------------------------
-def _clone_safely_for_oof(est):
+def _clone_for_oof(est):
     e = clone(est)
     cls = e.__class__.__name__.lower()
-
-    if "lgbm" in cls:
-        safe_params = {
-            "device_type": "cpu",          # 僅設 device_type，避免多重鍵告警
-            "feature_pre_filter": False,
-            "min_child_samples": 10,
-            "min_data_in_bin": 1,
-            "max_bin": 255,
-            "min_gain_to_split": 0.0
-        }
-        return _set_params_if_supported(e, **safe_params)
 
     if "stackingclassifier" in cls:
         new_estimators = []
         for name, sub in e.estimators:
-            new_estimators.append((name, _clone_safely_for_oof(sub)))
+            new_estimators.append((name, _clone_for_oof(sub)))
         e.estimators = new_estimators
         if getattr(e, "final_estimator", None) is not None:
-            e.final_estimator = _clone_safely_for_oof(e.final_estimator)
+            e.final_estimator = _clone_for_oof(e.final_estimator)
         e = _set_params_if_supported(e, n_jobs=1)
-        return e
-
     return e
 
 # -----------------------------
-# 遞迴：最終 fit 前的「硬化」處理（LGBM→CPU+安全）
+# 遞迴：最終 fit 前的「硬化」處理（僅調整堆疊結構）
 # -----------------------------
 def _finalize_estimators_for_fit(estimators: List[Tuple[str, object]]) -> List[Tuple[str, object]]:
     new_items: List[Tuple[str, object]] = []
@@ -133,18 +120,6 @@ def _finalize_estimators_for_fit(estimators: List[Tuple[str, object]]) -> List[T
 
 def _finalize_single_estimator(est):
     cls = est.__class__.__name__.lower()
-
-    # LightGBM：最終 fit 也改 CPU + 安全參數，避免 GPU 邊界崩潰
-    if "lgbm" in cls:
-        return _set_params_if_supported(
-            est,
-            device_type="cpu",             # 只設 device_type
-            feature_pre_filter=False,
-            min_child_samples=10,
-            min_data_in_bin=1,
-            max_bin=255,
-            min_gain_to_split=0.0
-        )
 
     # Stacking：遞迴處理所有子模型 + final_estimator
     if "stackingclassifier" in cls:
@@ -158,16 +133,13 @@ def _finalize_single_estimator(est):
             est.final_estimator = _finalize_single_estimator(est.final_estimator)
         # 3) 降低併行以穩定
         est = _set_params_if_supported(est, n_jobs=1)
-        return est
-
-    # 其他模型（XGB/CAT/RF/ET）維持原設定
     return est
 
 class DynamicSoftVoter(VotingClassifier):
     """
     - voting='soft'
     - fit() 前用 OOF 估 per-class 分數初始化各基模型的軟投票權重
-    - 最終 fit 前遞迴「硬化」：將所有巢狀 LGBM 改為 CPU + 安全參數
+    - 最終 fit 前遞迴「硬化」：處理巢狀結構並統一併行設定
     - 可在視窗資料上用指數權重更新 (Hedge) 做線上微調
     - 自動處理 DataFrame 欄位名：訓練若用 DataFrame，之後收到 ndarray 會自動補回欄位名
     """
@@ -209,7 +181,7 @@ class DynamicSoftVoter(VotingClassifier):
         for n, est in self.estimators:
             fold_scores = []
             for tr, va in skf.split(X, y):
-                est_fold = _clone_safely_for_oof(est)
+                est_fold = _clone_for_oof(est)
                 est_fold.fit(X[tr], y[tr])
                 proba = _ensure_proba(est_fold, X[va])
                 # 對齊類別欄寬
@@ -243,7 +215,7 @@ class DynamicSoftVoter(VotingClassifier):
         w0 = self._init_weights_via_oof(np.asarray(X), np.asarray(y))
         self.weights_ = w0
         self.weights = w0.tolist()
-        # 3) 最終 fit 前，遞迴硬化所有 estimator（把 LGBM → CPU+安全）
+        # 3) 最終 fit 前，遞迴硬化所有 estimator（統一處理堆疊結構）
         self.estimators = _finalize_estimators_for_fit(self.estimators)
         # 4) 正式訓練（VotingClassifier 內會逐一 .fit）
         return super().fit(X, y, sample_weight=sample_weight)

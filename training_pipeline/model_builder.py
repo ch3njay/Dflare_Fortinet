@@ -269,8 +269,8 @@ class ModelBuilder:
                     ),
                 }
             except Exception as e:
-                print(f"[LightGBM] Optuna 失敗，改用安全預設。原因：{e}")
-                best_params["LGB"] = self._safe_lgb_defaults(y, task_type)
+                print(f"[LightGBM] Optuna 失敗，改用原始設定。原因：{e}")
+                best_params["LGB"] = self._fix_lgb_device(self.config.get("MODEL_PARAMS", {}).get("LGB", {}), y, task_type)
         else:
             best_params["LGB"] = self._fix_lgb_device(self.config.get("MODEL_PARAMS", {}).get("LGB", {}), y, task_type)
 
@@ -363,65 +363,13 @@ class ModelBuilder:
             args["CAT"] = {"loss_function": "MultiClass"}
         return args
 
-    def _safe_lgb_defaults(self, y, task_type: str) -> dict:
-        """LGB 的安全預設（在 Optuna 崩潰或未啟用時使用）"""
-        p = {
-            "max_depth": 8,
-            "num_leaves": 127,
-            "learning_rate": 0.05,
-            "n_estimators": 300,
-            "min_data_in_leaf": 50,
-            "min_sum_hessian_in_leaf": 1e-2,
-            "min_gain_to_split": 1e-3,
-            "feature_fraction": 0.9,
-            "bagging_fraction": 0.9,
-            "bagging_freq": 1,
-            "max_bin": 255,
-            "lambda_l1": 0.0,
-            "lambda_l2": 0.0,
-            "device_type": "gpu",
-            "verbosity": -1,
-            "n_jobs": -1,
-        }
-        if task_type == "binary":
-            p.update({"objective": "binary", "metric": "binary_logloss"})
-        else:
-            p.update({"objective": "multiclass", "metric": "multi_logloss", "num_class": int(np.unique(y).shape[0])})
-        return p
 
     def _fix_lgb_device(self, params: dict, y, task_type: str) -> dict:
-        """把舊 config 的 device='gpu' 改為 device_type='gpu'，並補上安全預設。"""
+        """把舊 config 的 device='gpu' 改為 device_type='gpu'。"""
         p = dict(params)
         if p.get("device", None) == "gpu":
             p["device_type"] = "gpu"
             p.pop("device", None)
-
-        p.setdefault("verbosity", -1)
-        p.setdefault("n_jobs", -1)
-        p.setdefault("max_bin", 255)
-        p.setdefault("min_data_in_leaf", 50)
-        p.setdefault("min_sum_hessian_in_leaf", 1e-2)
-        p.setdefault("min_gain_to_split", 1e-3)
-        p.setdefault("feature_fraction", 0.9)
-        p.setdefault("bagging_fraction", 0.9)
-        p.setdefault("bagging_freq", 1)
-
-        if p.get("max_depth", -1) == -1:
-            p["max_depth"] = 8
-        md = p.get("max_depth", 8)
-        if md and md > 0:
-            p["num_leaves"] = min(p.get("num_leaves", 127), (1 << md) - 1)
-
-        if task_type == "binary":
-            p.setdefault("objective", "binary")
-            p.setdefault("metric", "binary_logloss")
-        else:
-            p.setdefault("objective", "multiclass")
-            p.setdefault("metric", "multi_logloss")
-            ncls = int(np.unique(y).shape[0]) if y is not None else None
-            if ncls:
-                p.setdefault("num_class", ncls)
-
         return p
 
     def _merge_xgb_params(self, base: dict, tuned: Optional[Dict[str, dict]], task_args: Dict[str, dict]) -> dict:
