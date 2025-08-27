@@ -1,0 +1,4 @@
+🏆 Ensemble Voting 組合 Top-K：
+[1] ['XGB', 'LGB', 'CAT'] | ACC=0.999825 | macro-F1=0.999460 | AUC=0.999999
+[2] ['XGB', 'CAT'] | ACC=0.999825 | macro-F1=0.999460 | AUC=0.999999
+[3] ['XGB', 'LGB'] | ACC=0.999820 | macro-F1=0.999444 | AUC=0.999999
