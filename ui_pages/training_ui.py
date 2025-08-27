@@ -2,6 +2,10 @@ import streamlit as st
 import threading
 import time
 import os
+import io
+import contextlib
+import queue
+
 from . import _ensure_module
 
 _ensure_module("numpy", "numpy_stub")
@@ -59,24 +63,45 @@ def app() -> None:
         pipeline.config.setdefault("ENSEMBLE_SETTINGS", {})["MODE"] = ensemble_mode
         progress = st.progress(0)
         status = st.empty()
+        log_box = st.empty()
 
         result = {"error": None, "output": None}
 
+        log_queue: "queue.Queue[str]" = queue.Queue()
+
+        class _QueueStream(io.TextIOBase):
+            def write(self, buf: str) -> int:  # pragma: no cover - thin wrapper
+                log_queue.put(buf)
+                return len(buf)
+
+            def flush(self) -> None:  # pragma: no cover - no buffering
+                pass
+
         def _run():
             try:
-                result["output"] = pipeline.run(tmp_path)
+                stream = _QueueStream()
+                with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
+                    result["output"] = pipeline.run(tmp_path)
+
             except Exception as exc:  # pragma: no cover - runtime failure
                 result["error"] = exc
 
         thread = threading.Thread(target=_run)
         thread.start()
         pct = 0
+        log_text = ""
         while thread.is_alive():
             pct = (pct + 5) % 100
             progress.progress(pct)
             status.text(f"Training in progress... {pct}%")
+            while not log_queue.empty():
+                log_text += log_queue.get()
+            log_box.code(log_text)
             time.sleep(0.1)
         thread.join()
+        while not log_queue.empty():
+            log_text += log_queue.get()
+        log_box.code(log_text)
         if result["error"] is None:
             progress.progress(100)
             status.text("Training finished")
