@@ -78,6 +78,15 @@ PAGE_ICONS = {
     "Notifications": "bell",
 }
 
+PAGE_EMOJIS = {
+    "Training Pipeline": "🛠️",
+    "GPU ETL Pipeline": "🚀",
+    "Model Inference": "🔍",
+    "Folder Monitor": "📁",
+    "Visualization": "📊",
+    "Notifications": "🔔",
+}
+
 PAGE_DESCRIPTIONS = {
     "Training Pipeline": "Configure and run model training jobs.",
     "GPU ETL Pipeline": "Execute ETL processes accelerated by GPUs.",
@@ -87,10 +96,12 @@ PAGE_DESCRIPTIONS = {
     "Notifications": "Send Discord alerts with Gemini-generated advice.",
 }
 
+page_keys = list(PAGES.keys())
+page_labels = [f"{PAGE_EMOJIS[k]} {k}" for k in page_keys]
+
 with st.sidebar:
     st.title("D-FLARE system")
     st.markdown("整合訓練、ETL、推論與通知的威脅分析平台。")
-
 
     if "menu_collapse" not in st.session_state:
         st.session_state.menu_collapse = False
@@ -101,10 +112,10 @@ with st.sidebar:
         menu_class = "menu-collapsed" if st.session_state.menu_collapse else "menu-expanded"
         with st.container():
             st.markdown(f"<div class='{menu_class}'>", unsafe_allow_html=True)
-            selection = option_menu(
+            selection_label = option_menu(
                 None,
-                list(PAGES.keys()),
-                icons=[PAGE_ICONS[k] for k in PAGES.keys()],
+                page_labels,
+                icons=[PAGE_ICONS[k] for k in page_keys],
                 menu_icon="cast",
                 default_index=0,
                 styles={
@@ -133,8 +144,9 @@ with st.sidebar:
             )
 
     else:  # Fallback to simple radio when option_menu missing
-        selection = st.radio("Go to", list(PAGES.keys()))
+        selection_label = st.radio("Go to", page_labels)
 
+    selection = page_keys[page_labels.index(selection_label)]
     st.markdown(PAGE_DESCRIPTIONS.get(selection, ""))
 
 PAGES[selection]()
