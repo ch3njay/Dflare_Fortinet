@@ -192,6 +192,10 @@ class TrainingPipeline:
             return models
 
         # Case 3：完全不啟用 Optuna
+
+        if not self.optuna_enabled:
+            print("🚫 Optuna 未啟用，使用 config 參數建模。")
+
         models = mb.build_models(X_train, y_train, task=task_name)
         return models
 
