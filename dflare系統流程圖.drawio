@@ -1,0 +1,120 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36" version="28.1.1">
+  <diagram name="第 1 页" id="KMeDCJXQtEKgbBDZzPAn">
+    <mxGraphModel dx="2376" dy="785" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Wp88gql-IODLMgGPEVOt-1" value="外部網路" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="10" y="210" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="144.68965517241378" y="239.68965517241384" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-2" value="校園伺服器" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="110" y="210" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-3" target="Wp88gql-IODLMgGPEVOt-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-3" value="校園防火牆" style="rounded=1;whiteSpace=wrap;html=1;shape=ellipse;perimeter=ellipsePerimeter;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="36.66" y="270" width="116.67" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-4" value="校內網路使用者" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="280" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-9" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.75;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-3" target="Wp88gql-IODLMgGPEVOt-2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="100" y="290" as="sourcePoint" />
+            <mxPoint x="150" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-10" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-1" target="Wp88gql-IODLMgGPEVOt-3">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="40" y="240" as="sourcePoint" />
+            <mxPoint x="90" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-12" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-3" target="Wp88gql-IODLMgGPEVOt-4">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="130" y="350" as="sourcePoint" />
+            <mxPoint x="180" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-14" target="Wp88gql-IODLMgGPEVOt-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-14" value="防火牆raw log" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="350" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-16" target="Wp88gql-IODLMgGPEVOt-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-16" value="資料 ETL流程 (清洗,編碼,特徵工程)" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-22.5" y="410" width="235" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-18" target="Wp88gql-IODLMgGPEVOt-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.499;exitY=0.965;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-18" target="Wp88gql-IODLMgGPEVOt-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-18" value="二元分類:潛在威脅偵測" style="rhombus;whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="12.5" y="470" width="165" height="67.5" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-21" value="否:非潛在威脅 (is_attack=0)" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="212.5" y="484.38" width="100" height="38.75" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-23" target="Wp88gql-IODLMgGPEVOt-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-23" value="是:潛在威脅 (is_attack=1)" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="44.99" y="565" width="100" height="38.75" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-25" value="多元分類:威脅等級評估" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="12.49" y="635" width="165" height="41.87" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-27" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.162;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-25" target="Wp88gql-IODLMgGPEVOt-28">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="44.99" y="746.87" as="sourcePoint" />
+            <mxPoint x="29.99" y="726.87" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-28" value="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="9.99" y="726.87" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-29" value="2" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="59.99" y="726.87" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-30" value="4" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="153.32" y="726.87" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-31" value="3" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="109.99" y="726.87" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-34" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.381;exitY=0.995;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-25" target="Wp88gql-IODLMgGPEVOt-29">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="79.99" y="686.87" as="sourcePoint" />
+            <mxPoint x="79.99" y="745.87" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-35" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.682;exitY=1.008;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-25" target="Wp88gql-IODLMgGPEVOt-31">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="129.99" y="686.87" as="sourcePoint" />
+            <mxPoint x="124.64999999999999" y="726.87" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-36" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.871;exitY=1.004;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="Wp88gql-IODLMgGPEVOt-25" target="Wp88gql-IODLMgGPEVOt-30">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="159.99" y="686.87" as="sourcePoint" />
+            <mxPoint x="219.99" y="735.87" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Wp88gql-IODLMgGPEVOt-37" value="將威脅等級分為: Low, medium,high,critical&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="-30.01" y="766.87" width="250" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
