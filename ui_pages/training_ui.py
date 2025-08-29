@@ -65,6 +65,7 @@ def app() -> None:
         log_box = st.empty()
 
         result = {"error": None, "output": None}
+
         log_queue: "queue.Queue[str]" = queue.Queue()
 
         class _QueueStream(io.TextIOBase):
@@ -80,6 +81,7 @@ def app() -> None:
                 stream = _QueueStream()
                 with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
                     result["output"] = pipeline.run(tmp_path)
+
             except Exception as exc:  # pragma: no cover - runtime failure
                 result["error"] = exc
 
@@ -106,8 +108,10 @@ def app() -> None:
 
             artifacts_dir = result["output"].get("artifacts_dir") if result["output"] else None
             if artifacts_dir:
+
                 model_path = os.path.join(artifacts_dir, "models", "ensemble_best.joblib")
                 if os.path.exists(model_path):
+
                     with open(model_path, "rb") as f:
                         model_bytes = f.read()
                     st.download_button(
@@ -118,6 +122,7 @@ def app() -> None:
                     st.info(f"Artifacts saved to: {artifacts_dir}")
                 else:
                     st.warning("Model file not found in artifacts directory.")
+
         else:
             status.text("Training failed")
             st.error(f"Training failed: {result['error']}")

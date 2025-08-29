@@ -31,7 +31,7 @@ except Exception:
     UndefinedMetricWarning = Warning  # 兼容舊版
 
 
-# ---------------- 工具：CPU 安全化（避免 Stacking/Voting 重新訓練 clone 時觸發單卡 GPU 衝突） ----------------
+# ---------------- 工具：CPU 版（避免 Stacking/Voting 重新訓練 clone 時觸發單卡 GPU 衝突） ----------------
 def _set_if_has(est, **pairs):
     """若 est 支援該參數，才設定；不丟例外。"""
     try:
@@ -55,15 +55,6 @@ def _as_cpu_estimator(est):
     # CatBoost
     if "catboost" in name:
         _set_if_has(e, task_type="CPU", devices="", verbose=False)
-
-    # LightGBM sklearn API
-    if "lgbm" in name or "lightgbm" in name:
-        params = e.get_params()
-        if "device_type" in params:
-            _set_if_has(e, device_type="cpu")
-        elif "device" in params:
-            _set_if_has(e, device="cpu")
-        _set_if_has(e, n_jobs=1, verbosity=-1, force_col_wise=True, deterministic=True)
 
     # XGBoost sklearn API
     if "xgb" in name or "xgboost" in name:
@@ -181,6 +172,8 @@ class ComboOptimizer:
         ens.setdefault("PRUNING", True)
         ens.setdefault("DIRECTION", "maximize")
         ens.setdefault("SEED", 42)
+        if not self.use_optuna:
+            ens.pop("OPTUNA_TRIALS", None)
         self.ens = ens
 
         # 供 Stacking 組成解讀用的類別列表（保持決定式）
@@ -188,17 +181,19 @@ class ComboOptimizer:
 
     def optimize(self) -> Dict[str, Any]:
         print(f"⚙️  Ensemble 設定載入完成：{self.ens}")
+        if not self.use_optuna:
+            print("🚫 Optuna 未啟用，使用既定集成策略。")
 
         voting_mode = str(self.ens.get("VOTING", "soft")).lower()
         stack_cv = int(self.ens.get("STACK_CV", 5))
 
-        # 建立 CPU 安全化後的基模型清單（避免 clone 時再開 GPU）
-        safe_estimators = [(name, _as_cpu_estimator(est)) for name, est in self.base_estimators]
+        # 建立 CPU 版的基模型清單（避免 clone 時再開 GPU）
+        cpu_estimators = [(name, _as_cpu_estimator(est)) for name, est in self.base_estimators]
 
         # ============ 分支一：Voting + Optuna ============ 
         if self.use_optuna and voting_mode in ("soft", "hard"):
             try:
-                final_model, metrics, composition = self._optuna_voting_search(safe_estimators, voting_mode)
+                final_model, metrics, composition = self._optuna_voting_search(cpu_estimators, voting_mode)
                 self._save_ensemble(final_model)
                 self._write_final_txt(kind="voting", metrics=metrics, composition=composition)
                 kind_desc = f"OptunaEnsembler（mode='{self.ens.get('MODE', 'free')}'）"
@@ -209,11 +204,11 @@ class ComboOptimizer:
         # ============ 分支二：固定子集枚舉 ============ 
         if voting_mode in ("soft", "hard"):
             if self.ens.get("SEARCH", "none") == "voting_subsets":
-                print("🧪 集成優化：使用固定子集枚舉搜尋（Top-K）。")
-                results = self._search_voting_subsets(safe_estimators, voting_mode)
+                print("🔍 集成搜尋：使用固定子集枚舉搜尋（Top-K）。")
+                results = self._search_voting_subsets(cpu_estimators, voting_mode)
                 # 以最佳名稱組合重訓並保存（避免把 estimator 物件寫入 JSON）
                 best_names = results["best_names"]
-                pool = {n: e for n, e in safe_estimators}
+                pool = {n: e for n, e in cpu_estimators}
                 best_ests = [(n, clone(pool[n])) for n in best_names]
 
                 final_model = self._fit_voting(best_ests, voting_mode)
@@ -235,17 +230,17 @@ class ComboOptimizer:
                 kind_desc = f"VotingClassifier（voting='{voting_mode}'）"
                 return self._finalize(kind_desc, final_model, metrics, composition)
             else:
-                final_model = self._fit_voting(safe_estimators, voting_mode)
+                final_model = self._fit_voting(cpu_estimators, voting_mode)
                 self._save_ensemble(final_model)
-                metrics, composition = self._eval_and_compose(final_model, kind="voting", estimators=safe_estimators)
+                metrics, composition = self._eval_and_compose(final_model, kind="voting", estimators=cpu_estimators)
                 self._write_final_txt(kind="voting", metrics=metrics, composition=composition)
                 kind_desc = f"VotingClassifier（voting='{voting_mode}'）"
                 return self._finalize(kind_desc, final_model, metrics, composition)
         else:
             # Stacking
-            final_model = self._fit_stacking(safe_estimators, cv=stack_cv)
+            final_model = self._fit_stacking(cpu_estimators, cv=stack_cv)
             self._save_ensemble(final_model)
-            metrics, composition = self._eval_and_compose(final_model, kind="stacking", estimators=safe_estimators)
+            metrics, composition = self._eval_and_compose(final_model, kind="stacking", estimators=cpu_estimators)
             self._write_final_txt(kind="stacking", metrics=metrics, composition=composition)
             kind_desc = f"StackingClassifier（cv={stack_cv}）"
             return self._finalize(kind_desc, final_model, metrics, composition)
