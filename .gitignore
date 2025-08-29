@@ -1,2 +1,22 @@
-haha/新點陣圖影像.bmp
-/haha
+# 忽略全部檔案
+*
+*.csv
+*.rar
+*.zip
+*.tar
+*.gz
+*.log
+*.json
+
+# 保留資料夾（這行確保 Git 會繼續往下看子資料夾）
+!*/
+
+# 保留特定副檔名
+!*.py
+!*.ipynb
+!*.png
+!*.pdf
+!*.txt
+!*.md
+!*.docx
+!.gitignore
