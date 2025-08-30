@@ -31,7 +31,19 @@ except Exception:
 
 
 def _merge_dict(base: Dict[str, Any], override: Dict[str, Any] | None) -> Dict[str, Any]:
-    out = dict(base or {})
+    """Deep-merge default config with user override.
+
+    Using ``dict()`` on ``base`` only creates a shallow copy which means nested
+    dictionaries (e.g. ``ENSEMBLE_SETTINGS``) would be shared between different
+    pipeline instances. Any in-place modification done by the UI could then leak
+    back and mutate the module level defaults, causing subsequent runs to pick
+    up stale values like ``SEARCH='voting_subsets'`` even when the user did not
+    request it.  A deep copy keeps each run isolated.
+    """
+
+    from copy import deepcopy
+
+    out = deepcopy(base or {})
     if override:
         out.update(override)
     return out
@@ -63,7 +75,7 @@ class TrainingPipeline:
         self.config.setdefault("RANDOM_STATE", 42)
         self.config.setdefault("ENSEMBLE_SETTINGS", {
             "STACK_CV": 5, "VOTING": "soft", "THRESHOLD": 0.5,
-            "SEARCH": "voting_subsets", "SEARCH_MAX_SUBSET": 4, "SEARCH_TOPK": 3, "MIN_MODELS": 2
+            "SEARCH": "none", "SEARCH_MAX_SUBSET": 4, "SEARCH_TOPK": 3, "MIN_MODELS": 2
         })
         self.config.setdefault("OUTPUT_DIR", "./artifacts")
         self.config.setdefault("SAVE_BASE_MODELS", False)
