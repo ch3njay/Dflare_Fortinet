@@ -37,13 +37,15 @@ def app() -> None:
         def _run():
             try:
                 df = pd.read_csv(data_file)
-                # keep only numeric and boolean columns to match training data
-                keep_cols = []
-                for col in df.columns:
-                    dt = df[col].dtype
-                    if pd.api.types.is_bool_dtype(dt) or pd.api.types.is_numeric_dtype(dt):
-                        keep_cols.append(col)
-                df = df[keep_cols].copy()
+
+                df = df.select_dtypes(include=["number", "bool"]).copy()
+
+                binary_model.seek(0)
+                bin_clf = joblib.load(binary_model)
+                features = getattr(bin_clf, "feature_names_in_", None)
+                if features is None and hasattr(bin_clf, "get_booster"):
+                    features = bin_clf.get_booster().feature_names
+                df = df.reindex(columns=features)
                 for col in df.columns:
                     if pd.api.types.is_bool_dtype(df[col].dtype):
                         df[col] = df[col].fillna(False).astype("int8", copy=False)
@@ -53,16 +55,13 @@ def app() -> None:
                             .fillna(0)
                             .astype("float32", copy=False)
                         )
-
-                binary_model.seek(0)
-                bin_clf = joblib.load(binary_model)
                 bin_pred = bin_clf.predict(df)
                 result = pd.DataFrame({"is_attack": bin_pred})
                 mask = result["is_attack"] == 1
                 if mask.any():
                     multi_model.seek(0)
                     mul_clf = joblib.load(multi_model)
-                    cr_pred = mul_clf.predict(df[mask])
+                    cr_pred = mul_clf.predict(df.loc[mask])
                     result.loc[mask, "crlevel"] = cr_pred
                 result_holder["df"] = result
             except Exception as exc:  # pragma: no cover - runtime failure
