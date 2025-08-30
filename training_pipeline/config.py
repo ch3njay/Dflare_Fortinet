@@ -22,7 +22,8 @@ CONFIG_BINARY = {
         "LGB": {
             "max_depth": 12,
             "learning_rate": 0.29348213117409244,
-            "num_leaves": 108
+            "num_leaves": 108,
+            "min_child_samples": 1
         },
         "CAT": {
             "depth": 6,
@@ -73,7 +74,8 @@ CONFIG_MULTICLASS = {
             "n_estimators": 360,
             "max_depth": -1,
             "learning_rate": 0.06919566270449405,
-            "num_leaves": 31
+            "num_leaves": 31,
+            "min_child_samples": 1
         },
         "CAT": {
             "depth": 10,
