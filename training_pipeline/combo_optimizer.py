@@ -160,7 +160,7 @@ class ComboOptimizer:
         ens.setdefault("VOTING", "soft")
         ens.setdefault("THRESHOLD", 0.5)
         # Voting 搜尋參數
-        ens.setdefault("SEARCH", "voting_subsets")   # "none" / "voting_subsets"
+        ens.setdefault("SEARCH", "none")   # "none" / "voting_subsets"
         ens.setdefault("SEARCH_MAX_SUBSET", 4)       # 子集最大模型數
         ens.setdefault("SEARCH_TOPK", 3)             # 取 Top-K
         # Optuna 搜尋回合（僅用於 ensemble）

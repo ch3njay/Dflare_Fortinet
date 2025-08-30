@@ -90,7 +90,8 @@ def app() -> None:
         pct = 0
         log_text = ""
         while thread.is_alive():
-            pct = (pct + 5) % 100
+            if pct < 95:
+                pct += 5
             progress.progress(pct)
             status.text(f"Training in progress... {pct}%")
             while not log_queue.empty():
