@@ -47,10 +47,10 @@ class Trainer:
         try:
             est.fit(X, y)
             return est
-        except LightGBMError as e:
-            msg = str(e)
-            if "best_split_info.left_count" in msg and hasattr(est, "set_params"):
+        except LightGBMError:
+            if hasattr(est, "set_params"):
                 try:
+                    print("⚠️  LightGBM GPU 失敗，改用 CPU 重新訓練。")
                     est.set_params(device_type="cpu")
                     est.fit(X, y)
                     return est

@@ -63,7 +63,7 @@ class TrainingPipeline:
         self.config.setdefault("RANDOM_STATE", 42)
         self.config.setdefault("ENSEMBLE_SETTINGS", {
             "STACK_CV": 5, "VOTING": "soft", "THRESHOLD": 0.5,
-            "SEARCH": "voting_subsets", "SEARCH_MAX_SUBSET": 4, "SEARCH_TOPK": 3, "MIN_MODELS": 2
+            "SEARCH": "none", "SEARCH_MAX_SUBSET": 4, "SEARCH_TOPK": 3, "MIN_MODELS": 2
         })
         self.config.setdefault("OUTPUT_DIR", "./artifacts")
         self.config.setdefault("SAVE_BASE_MODELS", False)
