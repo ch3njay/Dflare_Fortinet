@@ -47,7 +47,8 @@ def app() -> None:
         thread.start()
         pct = 0
         while thread.is_alive():
-            pct = (pct + 5) % 100
+            if pct < 95:
+                pct += 5
             progress.progress(pct)
             status.text(f"ETL in progress... {pct}%")
             time.sleep(0.1)
