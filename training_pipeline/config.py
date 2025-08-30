@@ -69,13 +69,16 @@ CONFIG_MULTICLASS = {
             "colsample_bytree": 0.5147427892922118,
             "tree_method": "hist",
             "device": "cpu",
+
             "eval_metric": "mlogloss"
         },
         "LGB": {
+
             "n_estimators": 360,
             "max_depth": -1,
             "learning_rate": 0.06919566270449405,
             "num_leaves": 31
+
         },
         "CAT": {
             "depth": 10,
