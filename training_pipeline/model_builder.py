@@ -396,9 +396,10 @@ class ModelBuilder:
             p.update(tuned["LGB"])
         p.setdefault("random_state", self.config.get("RANDOM_STATE", 42))
 
-        # Silence LightGBM warnings like "No further splits with positive gain"
+        p.setdefault("min_child_samples", 1)
+        # Silence LightGBM "No further splits" warnings but keep standard output
         p.pop("verbose", None)
-        p.setdefault("verbosity", -1)
+        p.setdefault("verbosity", 0)
 
         p.update(task_args["LGB"])
         return p
