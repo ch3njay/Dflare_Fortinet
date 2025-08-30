@@ -45,7 +45,8 @@ CONFIG_BINARY = {
     "ENSEMBLE_SETTINGS": {
         "STACK_CV": 5,
         "VOTING": "soft",
-        "THRESHOLD": 0.33
+        "THRESHOLD": 0.33,
+        "SEARCH": "none"
     }
 }
 
@@ -97,6 +98,7 @@ CONFIG_MULTICLASS = {
     "ENSEMBLE_SETTINGS": {
         "STACK_CV": 5,
         "VOTING": "soft",
-        "THRESHOLD": 0.33
+        "THRESHOLD": 0.33,
+        "SEARCH": "none"
     }
 }
