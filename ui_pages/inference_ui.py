@@ -37,7 +37,9 @@ def app() -> None:
         def _run():
             try:
                 df = pd.read_csv(data_file)
+
                 df = df.select_dtypes(include=["number", "bool"]).copy()
+
                 binary_model.seek(0)
                 bin_clf = joblib.load(binary_model)
                 features = getattr(bin_clf, "feature_names_in_", None)
