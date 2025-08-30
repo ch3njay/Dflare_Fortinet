@@ -37,6 +37,23 @@ def app() -> None:
         def _run():
             try:
                 df = pd.read_csv(data_file)
+                # keep only numeric and boolean columns to match training data
+                keep_cols = []
+                for col in df.columns:
+                    dt = df[col].dtype
+                    if pd.api.types.is_bool_dtype(dt) or pd.api.types.is_numeric_dtype(dt):
+                        keep_cols.append(col)
+                df = df[keep_cols].copy()
+                for col in df.columns:
+                    if pd.api.types.is_bool_dtype(df[col].dtype):
+                        df[col] = df[col].fillna(False).astype("int8", copy=False)
+                    else:
+                        df[col] = (
+                            pd.to_numeric(df[col], errors="coerce")
+                            .fillna(0)
+                            .astype("float32", copy=False)
+                        )
+
                 binary_model.seek(0)
                 bin_clf = joblib.load(binary_model)
                 bin_pred = bin_clf.predict(df)
