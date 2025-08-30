@@ -112,7 +112,7 @@ class TrainingPipeline:
 
         defaults = {
             "XGB": ["n_estimators", "max_depth", "learning_rate", "subsample", "colsample_bytree",
-                    "tree_method", "device", "eval_metric"],
+                    "tree_method", "device", "use_label_encoder", "eval_metric"],
             "LGB": ["n_estimators", "max_depth", "learning_rate", "num_leaves", "device_type"],
             "CAT": ["iterations", "depth", "learning_rate", "task_type", "devices"],
             "RF":  ["n_estimators", "max_depth"],

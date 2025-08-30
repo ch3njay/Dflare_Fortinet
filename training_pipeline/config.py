@@ -17,6 +17,7 @@ CONFIG_BINARY = {
             "colsample_bytree": 0.6125623581444746,
             "tree_method": "hist",
             "device": "cuda",
+            "use_label_encoder": False,
             "eval_metric": "logloss"
         },
         "LGB": {
@@ -69,7 +70,7 @@ CONFIG_MULTICLASS = {
             "colsample_bytree": 0.5147427892922118,
             "tree_method": "hist",
             "device": "cpu",
-
+            "use_label_encoder": False,
             "eval_metric": "mlogloss"
         },
         "LGB": {
