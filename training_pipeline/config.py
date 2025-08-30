@@ -7,7 +7,7 @@ CONFIG_BINARY = {
         "proto_port", "sub_action", "svc_action"
     ],
     "VALID_SIZE": 0.2,
-    "RANDOM_STATE": 42,
+    "RANDOM_STATE": 100,
     "MODEL_PARAMS": {
         "XGB": {
             "n_estimators": 114,
@@ -24,6 +24,7 @@ CONFIG_BINARY = {
             "max_depth": 12,
             "learning_rate": 0.29348213117409244,
             "num_leaves": 108,
+            "min_child_samples": 1,
             "device": "gpu"
         },
         "CAT": {
@@ -59,7 +60,7 @@ CONFIG_MULTICLASS = {
         "proto_port", "sub_action", "svc_action"
     ],
     "VALID_SIZE": 0.2,
-    "RANDOM_STATE": 42,
+    "RANDOM_STATE": 100,
     "MODEL_PARAMS": {
         "XGB": {
             "n_estimators": 82,
@@ -77,6 +78,7 @@ CONFIG_MULTICLASS = {
             "max_depth": 4,
             "learning_rate": 0.07476200160360733,
             "num_leaves": 79,
+            "min_child_samples": 1,
             "device": "gpu"
         },
         "CAT": {
