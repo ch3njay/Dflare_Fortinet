@@ -395,7 +395,11 @@ class ModelBuilder:
         if tuned and "LGB" in tuned:
             p.update(tuned["LGB"])
         p.setdefault("random_state", self.config.get("RANDOM_STATE", 42))
-        p.setdefault("verbose", 0)
+
+        # Silence LightGBM warnings like "No further splits with positive gain"
+        p.pop("verbose", None)
+        p.setdefault("verbosity", -1)
+
         p.update(task_args["LGB"])
         return p
 
