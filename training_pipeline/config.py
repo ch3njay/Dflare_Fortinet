@@ -16,7 +16,9 @@ CONFIG_BINARY = {
             "subsample": 0.6482232909747706,
             "colsample_bytree": 0.6125623581444746,
             "tree_method": "hist",
+
             "device": "cpu",
+
             "eval_metric": "logloss"
         },
         "LGB": {
@@ -24,6 +26,7 @@ CONFIG_BINARY = {
             "learning_rate": 0.29348213117409244,
             "num_leaves": 108,
             "min_child_samples": 1
+
         },
         "CAT": {
             "depth": 6,
@@ -68,6 +71,7 @@ CONFIG_MULTICLASS = {
             "colsample_bytree": 0.5147427892922118,
             "tree_method": "hist",
             "device": "cpu",
+
             "eval_metric": "mlogloss"
         },
         "LGB": {
@@ -76,6 +80,7 @@ CONFIG_MULTICLASS = {
             "learning_rate": 0.06919566270449405,
             "num_leaves": 31,
             "min_child_samples": 1
+
         },
         "CAT": {
             "depth": 10,
