@@ -7,7 +7,7 @@ CONFIG_BINARY = {
         "proto_port", "sub_action", "svc_action"
     ],
     "VALID_SIZE": 0.2,
-    "RANDOM_STATE": 42,
+    "RANDOM_STATE": 100,
     "MODEL_PARAMS": {
         "XGB": {
             "n_estimators": 114,
@@ -16,15 +16,13 @@ CONFIG_BINARY = {
             "subsample": 0.6482232909747706,
             "colsample_bytree": 0.6125623581444746,
             "tree_method": "hist",
-            "device": "cuda",
-            "use_label_encoder": False,
+            "device": "cpu",
             "eval_metric": "logloss"
         },
         "LGB": {
             "max_depth": 12,
             "learning_rate": 0.29348213117409244,
-            "num_leaves": 108,
-            "device": "gpu"
+            "num_leaves": 108
         },
         "CAT": {
             "depth": 6,
@@ -59,40 +57,38 @@ CONFIG_MULTICLASS = {
         "proto_port", "sub_action", "svc_action"
     ],
     "VALID_SIZE": 0.2,
-    "RANDOM_STATE": 42,
+    "RANDOM_STATE": 100,
     "MODEL_PARAMS": {
         "XGB": {
-            "n_estimators": 82,
-            "max_depth": 6,
-            "learning_rate": 0.028066024152840267,
-            "subsample": 0.6929780665557963,
-            "colsample_bytree": 0.7019399941296385,
+            "n_estimators": 189,
+            "max_depth": 8,
+            "learning_rate": 0.1898717379219999,
+            "subsample": 0.6875100692343238,
+            "colsample_bytree": 0.5147427892922118,
             "tree_method": "hist",
-            "device": "cuda",
-            "use_label_encoder": False,
+            "device": "cpu",
             "eval_metric": "mlogloss"
         },
         "LGB": {
-            "n_estimators": 139,
-            "max_depth": 4,
-            "learning_rate": 0.07476200160360733,
-            "num_leaves": 79,
-            "device": "gpu"
+            "n_estimators": 360,
+            "max_depth": -1,
+            "learning_rate": 0.06919566270449405,
+            "num_leaves": 31
         },
         "CAT": {
-            "depth": 4,
-            "learning_rate": 0.08271529761904835,
-            "iterations": 82,
+            "depth": 10,
+            "learning_rate": 0.0768152029814235,
+            "iterations": 249,
             "task_type": "GPU",
             "devices": "0"
         },
         "RF": {
-            "n_estimators": 163,
-            "max_depth": 6
+            "n_estimators": 167,
+            "max_depth": 10
         },
         "ET": {
-            "n_estimators": 161,
-            "max_depth": 7
+            "n_estimators": 227,
+            "max_depth": 12
         }
     },
     "ENSEMBLE_SETTINGS": {

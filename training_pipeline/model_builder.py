@@ -394,6 +394,10 @@ class ModelBuilder:
         p = self._fix_lgb_device(base, y, task)
         if tuned and "LGB" in tuned:
             p.update(tuned["LGB"])
+        p.setdefault("random_state", self.config.get("RANDOM_STATE", 42))
+        # Silence LightGBM "No further splits" warnings but keep standard output
+        p.pop("verbose", None)
+        p.setdefault("verbosity", 0)
         p.update(task_args["LGB"])
         return p
 
