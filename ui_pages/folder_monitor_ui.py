@@ -75,29 +75,47 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         features = [c for c in df.columns if c not in {"is_attack", "crlevel"}]
 
         bin_clf = bin_model
-
-        bin_pred = bin_clf.predict(df[features])
+        bin_features = list(getattr(bin_clf, "feature_names_in_", features))
+        missing = [f for f in bin_features if f not in df.columns]
+        if missing:
+            st.session_state.log_lines.append(
+                f"Missing features for binary model: {missing}"
+            )
+            return
+        bin_pred = bin_clf.predict(df[bin_features])
         result = df.copy()
         result["is_attack"] = bin_pred
         mask = result["is_attack"] == 1
         if mask.any():
 
             mul_clf = mul_model
-
-            result.loc[mask, "crlevel"] = mul_clf.predict(df.loc[mask, features])
+            mul_features = list(getattr(mul_clf, "feature_names_in_", features))
+            missing_mul = [f for f in mul_features if f not in df.columns]
+            if missing_mul:
+                st.session_state.log_lines.append(
+                    f"Missing features for multiclass model: {missing_mul}"
+                )
+                return
+            result.loc[mask, "crlevel"] = mul_clf.predict(df.loc[mask, mul_features])
         report_path = base + "_report.csv"
         result.to_csv(report_path, index=False)
         st.session_state.generated_files.update({pre_csv, fe_csv, report_path})
         webhook = st.session_state.get("discord_webhook", "")
         gemini_key = st.session_state.get("gemini_key", "")
-        if webhook:
-            notify_from_csv(
-                report_path,
-                webhook,
-                gemini_key,
-                risk_levels={"3", "4"},
-                ui_log=st.write,
-            )
+        line_token = st.session_state.get("line_token", "")
+
+        def _log(msg: str) -> None:
+            st.session_state.log_lines.append(msg)
+            st.write(msg)
+
+        notify_from_csv(
+            report_path,
+            webhook,
+            gemini_key,
+            risk_levels={"3", "4"},
+            ui_log=_log,
+            line_token=line_token,
+        )
         st.session_state.log_lines.append(f"Processed {path} -> {report_path}")
         for pct in range(0, 101, 20):
             progress_bar.progress(pct)
@@ -162,15 +180,25 @@ def app() -> None:
     col1, col2 = st.columns([3, 1])
     with col1:
         st.text_input("Folder to monitor", key="folder_input")
+
+    def _browse_folder() -> None:
+        if tk is None or filedialog is None:
+            return
+        root = tk.Tk()
+        root.withdraw()
+        selected = filedialog.askdirectory()
+        if selected:
+            st.session_state.folder_input = selected
+            st.session_state.folder = selected
+            st.experimental_rerun()
+
     with col2:
-        if st.button("Browse", disabled=tk is None or filedialog is None):
-            root = tk.Tk()
-            root.withdraw()
-            selected = filedialog.askdirectory()
-            if selected:
-                st.session_state.folder_input = selected
-                st.session_state.folder = selected
-                st.experimental_rerun()
+        st.button(
+            "Browse",
+            disabled=tk is None or filedialog is None,
+            on_click=_browse_folder,
+        )
+
     folder = st.session_state.folder_input
     st.session_state.folder = folder
 

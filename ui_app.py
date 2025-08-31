@@ -93,7 +93,7 @@ PAGE_DESCRIPTIONS = {
     "Model Inference": "Perform inference using trained models.",
     "Folder Monitor": "Watch a directory for CSV/TXT/log files, including compressed variants.",
     "Visualization": "Explore dataset and model outputs through charts.",
-    "Notifications": "Send Discord alerts with Gemini-generated advice.",
+    "Notifications": "Send Discord/LINE alerts with Gemini-generated advice.",
 }
 
 page_keys = list(PAGES.keys())

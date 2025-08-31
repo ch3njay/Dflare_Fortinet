@@ -17,6 +17,8 @@ try:  # pragma: no cover - best effort import
 except Exception:  # pragma: no cover - network disabled
     requests = None  # type: ignore
 
+USER_FILE = "line_users.txt"
+
 # Mapping from various severity representations to numeric levels
 _CRLEVEL_MAP = {
     "1": 1,
@@ -66,6 +68,56 @@ def send_discord(webhook_url: str, content: str) -> Tuple[bool, str]:
         return False, str(exc)
 
 
+def load_line_users(user_file: str = USER_FILE) -> Iterable[str]:
+    """Load LINE user IDs from *user_file* if present."""
+
+    if not os.path.exists(user_file):
+        return []
+    with open(user_file, "r", encoding="utf-8") as fh:
+        return [line.strip() for line in fh if line.strip()]
+
+
+def _push_line(access_token: str, user_id: str, msg: str) -> bool:
+    """Push *msg* to a single LINE *user_id*."""
+
+    if requests is None:  # pragma: no cover - fallback when requests missing
+        return False
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    payload = {"to": user_id, "messages": [{"type": "text", "text": msg}]}
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=10)
+        return resp.status_code == 200
+    except Exception:  # pragma: no cover - network error
+        return False
+
+
+def send_line_to_all(access_token: str, msg: str, callback=None) -> bool:
+    """Send *msg* to all registered LINE users."""
+
+    user_ids = list(load_line_users())
+    if not access_token or len(access_token) < 10:
+        if callback:
+            callback("LINE Channel Access Token not set")
+        return False
+    if not user_ids:
+        if callback:
+            callback("No LINE users registered")
+        return False
+    success = False
+    for uid in user_ids:
+        if _push_line(access_token, uid, msg):
+            success = True
+            if callback:
+                callback(f"Sent LINE notification to {uid}")
+        elif callback:
+            callback(f"Failed to send LINE notification to {uid}")
+    return success
+
+
 def ask_gemini(desc: str, api_key: str) -> str:
     """Query Gemini for a two-line English recommendation.
 
@@ -112,8 +164,9 @@ def notify_from_csv(
     ui_log=None,
     dedupe_cache: Optional[Dict] = None,
     progress_cb: Optional[Callable[[float], None]] = None,
+    line_token: str = "",
 ):
-    """Read a Fortinet event CSV and push high-risk rows to Discord."""
+    """Read a Fortinet event CSV and push high-risk rows to Discord/LINE."""
 
     if dedupe_cache is not None:
         strategy = dedupe_cache.get("strategy", "mtime")
@@ -151,6 +204,7 @@ def notify_from_csv(
     cr_col = _find_column(columns, _COLUMN_ALIASES["crlevel"])
     src_col = _find_column(columns, _COLUMN_ALIASES["srcip"])
     desc_col = _find_column(columns, _COLUMN_ALIASES["description"])
+    atk_col = _find_column(columns, ["is_attack"])
     if not (cr_col and src_col and desc_col):
         if ui_log:
             ui_log("CSV missing required columns.")
@@ -160,28 +214,49 @@ def notify_from_csv(
     results = []
     total = len(rows)
     for idx, row in enumerate(rows, 1):
+        if atk_col:
+            val = row.get(atk_col, 0)
+            try:
+                atk = int(val)
+            except Exception:
+                atk = 1 if str(val).strip().lower() in {"1", "true", "yes"} else 0
+            if atk != 1:
+                continue
         cr_int = normalize_crlevel(row.get(cr_col))
         if cr_int is None or cr_int not in risk_ints:
             continue
         cr_text = {1: "low", 2: "medium", 3: "high", 4: "critical"}[cr_int]
         srcip = row.get(src_col)
         desc = row.get(desc_col)
-        ai_text = ask_gemini(str(desc), gemini_key)
-        lines = ai_text.splitlines()
-        reco1 = lines[0] if lines else ""
-        reco2 = lines[1] if len(lines) > 1 else ""
-        message = (
-            "🚨 High-risk event detected (Fortinet)\n"
-            f"Level: {cr_text} ({cr_int})\n"
-            f"Source IP: {srcip}\n"
-            f"Description: {desc}\n"
-            "———— AI Recommendation ————\n"
-            f"{reco1}\n{reco2}"
-        )
-        ok, info = send_discord(discord_webhook, message)
-        results.append((message, ok, info))
+        if gemini_key:
+            ai_text = ask_gemini(str(desc), gemini_key)
+            lines = ai_text.splitlines()
+            reco1 = lines[0] if lines else ""
+            reco2 = lines[1] if len(lines) > 1 else ""
+            message = (
+                "🚨 High-risk event detected (Fortinet)\n"
+                f"Level: {cr_text} ({cr_int})\n"
+                f"Source IP: {srcip}\n"
+                f"Description: {desc}\n"
+                "———— AI Recommendation ————\n"
+                f"{reco1}\n{reco2}"
+            )
+        else:
+            message = (
+                "🚨 High-risk event detected (Fortinet)\n"
+                f"Level: {cr_text} ({cr_int})\n"
+                f"Source IP: {srcip}\n"
+                f"Description: {desc}"
+            )
         if ui_log:
-            ui_log(f"Sent event: {srcip} - {'success' if ok else 'failure'}")
+            ui_log(message)
+        ok = True
+        info = ""
+        if discord_webhook:
+            ok, info = send_discord(discord_webhook, message)
+        if line_token:
+            send_line_to_all(line_token, message, callback=ui_log)
+        results.append((message, ok, info))
         if progress_cb:
             progress_cb(idx / total if total else 1.0)
 
@@ -193,6 +268,7 @@ def notify_from_csv(
 __all__ = [
     "normalize_crlevel",
     "send_discord",
+    "send_line_to_all",
     "ask_gemini",
     "notify_from_csv",
 ]
