@@ -96,7 +96,6 @@ def test_notify_from_csv_line(tmp_path, monkeypatch):
     assert sent and sent[0][0] == "TOKEN"
 
 
-
 def test_notify_from_csv_no_gemini(tmp_path, monkeypatch):
     csv = tmp_path / "events.csv"
     csv.write_text(

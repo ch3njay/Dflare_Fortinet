@@ -92,10 +92,21 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             if line.strip():
                 st.session_state.log_lines.append(line.strip())
 
+
+
+        # feature engineered data for model inference
+
         df = pd.read_csv(fe_csv)
         if df.isna().any().any():
             st.session_state.log_lines.append("Detected NaNs; filling with 0")
             df.fillna(0, inplace=True)
+
+
+        # original data retained for notification context
+        raw_df = pd.read_csv(path)
+        if raw_df.isna().any().any():
+            raw_df.fillna("", inplace=True)
+
 
         features = [c for c in df.columns if c not in {"is_attack", "crlevel"}]
 
@@ -110,10 +121,11 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
 
 
         st.session_state.log_lines.append("Running binary classification")
-
         bin_pred = bin_clf.predict(df[bin_features])
-        result = df.copy()
+        result = raw_df.copy()
+
         result["is_attack"] = bin_pred
+        result["crlevel"] = 0
         mask = result["is_attack"] == 1
         st.session_state.log_lines.append(
             f"Binary classification found {mask.sum()} attack rows"
@@ -189,6 +201,8 @@ def _process_events(handler: _FileMonitorHandler, progress_bar) -> None:
     """Process newly detected files."""
     new_events = handler.events[len(st.session_state.get("processed_events", [])) :]
     for _, path in new_events:
+        if path in st.session_state.get("generated_files", set()):
+            continue
         try:
             if time.time() - os.path.getmtime(path) < 5:
                 continue
