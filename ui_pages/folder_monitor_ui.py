@@ -1,5 +1,8 @@
 import os
 import time
+import io
+import re
+import contextlib
 import pandas as pd
 import joblib
 import streamlit as st
@@ -56,29 +59,44 @@ class _FileMonitorHandler(FileSystemEventHandler):
         if not event.is_directory:
             self._track("modified", event.src_path)
 
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
 def _run_etl_and_infer(path: str, progress_bar) -> None:
     """Run ETL pipeline and model inference on *path*."""
     bin_model = st.session_state.get("binary_model")
     mul_model = st.session_state.get("multi_model")
     if not (bin_model and mul_model):
-
         st.session_state.log_lines.append("Models not uploaded; skipping")
-
         return
 
     base = os.path.splitext(path)[0]
     pre_csv = base + "_preprocessed.csv"
     fe_csv = base + "_engineered.csv"
     try:
-        run_pipeline(
-            do_clean=False,
-            do_map=True,
-            do_fe=True,
-            clean_out=path,
-            preproc_out=pre_csv,
-            fe_out=fe_csv,
+        st.session_state.log_lines.append(f"Detected new file: {path}")
+        st.session_state.log_lines.append(
+            "Cleaning step skipped (assuming input already cleaned)"
         )
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            run_pipeline(
+                do_clean=False,
+                do_map=True,
+                do_fe=True,
+                clean_out=path,
+                preproc_out=pre_csv,
+                fe_out=fe_csv,
+            )
+        for line in ANSI_RE.sub("", buf.getvalue()).splitlines():
+            if line.strip():
+                st.session_state.log_lines.append(line.strip())
+
         df = pd.read_csv(fe_csv)
+        if df.isna().any().any():
+            st.session_state.log_lines.append("Detected NaNs; filling with 0")
+            df.fillna(0, inplace=True)
+
         features = [c for c in df.columns if c not in {"is_attack", "crlevel"}]
 
         bin_clf = bin_model
@@ -89,12 +107,18 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
                 f"Missing features for binary model: {missing}"
             )
             return
+
+
+        st.session_state.log_lines.append("Running binary classification")
+
         bin_pred = bin_clf.predict(df[bin_features])
         result = df.copy()
         result["is_attack"] = bin_pred
         mask = result["is_attack"] == 1
+        st.session_state.log_lines.append(
+            f"Binary classification found {mask.sum()} attack rows"
+        )
         if mask.any():
-
             mul_clf = mul_model
             mul_features = list(getattr(mul_clf, "feature_names_in_", features))
             missing_mul = [f for f in mul_features if f not in df.columns]
@@ -103,7 +127,19 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
                     f"Missing features for multiclass model: {missing_mul}"
                 )
                 return
-            result.loc[mask, "crlevel"] = mul_clf.predict(df.loc[mask, mul_features])
+
+            st.session_state.log_lines.append(
+                "Running multiclass classification for attack rows"
+            )
+            result.loc[mask, "crlevel"] = mul_clf.predict(
+                df.loc[mask, mul_features]
+            )
+        else:
+            st.session_state.log_lines.append(
+                "No attacks detected; skipping multiclass classification"
+            )
+
+
         report_path = base + "_report.csv"
         result.to_csv(report_path, index=False)
         st.session_state.generated_files.update({pre_csv, fe_csv, report_path})
