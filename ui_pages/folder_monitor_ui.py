@@ -54,7 +54,9 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
     bin_model = st.session_state.get("binary_model")
     mul_model = st.session_state.get("multi_model")
     if not (bin_model and mul_model):
+
         st.session_state.log_lines.append("Models not uploaded; skipping")
+
         return
 
     base = os.path.splitext(path)[0]
@@ -71,13 +73,17 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         )
         df = pd.read_csv(fe_csv)
         features = [c for c in df.columns if c not in {"is_attack", "crlevel"}]
+
         bin_clf = bin_model
+
         bin_pred = bin_clf.predict(df[features])
         result = df.copy()
         result["is_attack"] = bin_pred
         mask = result["is_attack"] == 1
         if mask.any():
+
             mul_clf = mul_model
+
             result.loc[mask, "crlevel"] = mul_clf.predict(df.loc[mask, features])
         report_path = base + "_report.csv"
         result.to_csv(report_path, index=False)
@@ -169,6 +175,7 @@ def app() -> None:
     st.session_state.folder = folder
 
 
+
     bin_upload = st.file_uploader(
         "Upload binary model",
         type=["pkl", "joblib"],
@@ -195,12 +202,14 @@ def app() -> None:
 
     retention = st.number_input(
         "Auto clear files older than (hours, 0=off)",
+
         min_value=0,
         value=0,
         step=1,
         key="cleanup_hours",
     )
     if st.button("Clear data now"):
+
         _cleanup_generated(0, force=True)
 
     if Observer is None:
