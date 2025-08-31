@@ -105,7 +105,11 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         # original data retained for notification context
         raw_df = pd.read_csv(path)
         if raw_df.isna().any().any():
-            raw_df.fillna("", inplace=True)
+            fill_values = {
+                col: 0 if pd.api.types.is_numeric_dtype(raw_df[col]) else ""
+                for col in raw_df.columns
+            }
+            raw_df.fillna(value=fill_values, inplace=True)
 
 
         features = [c for c in df.columns if c not in {"is_attack", "crlevel"}]
