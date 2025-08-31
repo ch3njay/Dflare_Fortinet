@@ -102,6 +102,16 @@ class TrainingPipeline:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(obj, f, ensure_ascii=False, indent=2)
 
+    def _np_to_py(self, obj: Any) -> Any:
+        """Recursively convert NumPy objects to pure Python types."""
+        if isinstance(obj, dict):
+            return {k: self._np_to_py(v) for k, v in obj.items()}
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, (np.floating, np.integer)):
+            return obj.item()
+        return obj
+
     # ===== 匯出「可直接覆蓋 config.py」的 MODEL_PARAMS 片段 =====
     def _export_config_overwrite_snippet(self, trained: Dict[str, Any]) -> None:
         model_keys_whitelist: Dict[str, List[str]] = {}
@@ -227,6 +237,8 @@ class TrainingPipeline:
         for name, model in trained.items():
             res = self.evaluator.evaluate(model, X_valid, y_valid, name=name)
             single_results[name] = res
+        single_results_py = {n: self._np_to_py(r) for n, r in single_results.items()}
+        self._dump_json(os.path.join(self.out_dir, "reports", "single_model_results.json"), single_results_py)
 
         # 保存基模型（依設定；預設不存）與最佳參數覆寫片段（若啟用基模型優化）
         if self.optuna_enabled and self.optimize_base:
@@ -266,6 +278,13 @@ class TrainingPipeline:
             dmw.fit(X_train, y_train)
             _ = self.evaluator.evaluate(dmw, X_valid, y_valid, name="DMW-Ensemble")
             ensemble_results = {"model": dmw, "settings": {"DMW": True}, "metrics": {}}
+        ensemble_metrics_py = self._np_to_py(ensemble_results.get("metrics", {}))
+        summary = {
+            "task_type": self.task_type,
+            "single_models": single_results_py,
+            "ensemble": ensemble_metrics_py,
+        }
+        self._dump_json(os.path.join(self.out_dir, "reports", "evaluation_summary.json"), summary)
 
         print(f"📦 產出已保存於：{self.out_dir}")
 
