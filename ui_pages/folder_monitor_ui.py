@@ -3,12 +3,15 @@ import time
 import io
 import re
 import contextlib
+from pathlib import Path
+
 import pandas as pd
 import joblib
 import streamlit as st
 import matplotlib.pyplot as plt
 
 from etl_pipeliner import run_pipeline
+from etl_pipeline import log_cleaning as LC
 from notifier import notify_from_csv
 
 
@@ -49,7 +52,8 @@ class _FileMonitorHandler(FileSystemEventHandler):
         self.events = []
 
     def _track(self, event_type: str, path: str) -> None:
-        if path.endswith(self.SUPPORTED_EXTS):
+        """Record events for supported files regardless of case."""
+        if path.lower().endswith(self.SUPPORTED_EXTS):
             self.events.append((event_type, path))
 
     def on_created(self, event):  # pragma: no cover - requires filesystem events
@@ -80,19 +84,41 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         st.session_state.log_lines.append("Models not uploaded; skipping")
         return
 
-    base = os.path.splitext(path)[0]
-    pre_csv = base + "_preprocessed.csv"
-    fe_csv = base + "_engineered.csv"
+    p = Path(path)
+    while p.suffix in {".gz", ".zip"}:
+        p = p.with_suffix("")
+    ext = p.suffix.lower()
+    stem = p.stem.lower()
+
+    clean_csv = path
+    do_map = True
+    do_fe = True
+
+    if ext in {".txt", ".log"}:
+        clean_csv = str(p.with_name(p.stem + "_clean.csv"))
+        _log_toast("Running cleaning for raw log")
+        LC.clean_logs(quiet=True, paths=[path], clean_csv=clean_csv)
+    else:
+        clean_csv = path
+        if stem.endswith("_engineered"):
+            do_map = False
+            do_fe = False
+        elif stem.endswith("_preprocessed"):
+            do_map = False
+            do_fe = True
+
+    base = p.with_suffix("")
+    pre_csv = clean_csv if not do_map else f"{base}_preprocessed.csv"
+    fe_csv = pre_csv if not do_fe else f"{base}_engineered.csv"
     try:
         _log_toast(f"Detected new file: {path}")
-        _log_toast("Cleaning step skipped (assuming input already cleaned)")
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             run_pipeline(
                 do_clean=False,
-                do_map=True,
-                do_fe=True,
-                clean_out=path,
+                do_map=do_map,
+                do_fe=do_fe,
+                clean_out=clean_csv,
                 preproc_out=pre_csv,
                 fe_out=fe_csv,
             )
@@ -111,7 +137,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
 
 
         # original data retained for notification context
-        raw_df = pd.read_csv(path)
+        raw_df = pd.read_csv(clean_csv)
         if raw_df.isna().any().any():
             fill_values = {
                 col: 0 if pd.api.types.is_numeric_dtype(raw_df[col]) else ""
@@ -126,11 +152,11 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         bin_features = list(getattr(bin_clf, "feature_names_in_", features))
         missing = [f for f in bin_features if f not in df.columns]
         if missing:
-            _log_toast(f"Missing features for binary model: {missing}")
-            return
+            _log_toast(f"Missing features for binary model: {missing}; filling with 0")
+        df_bin = df.reindex(columns=bin_features, fill_value=0)
 
         _log_toast("Running binary classification")
-        bin_pred = bin_clf.predict(df[bin_features])
+        bin_pred = bin_clf.predict(df_bin)
         result = raw_df.copy()
 
         result["is_attack"] = bin_pred
@@ -143,21 +169,23 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             missing_mul = [f for f in mul_features if f not in df.columns]
             if missing_mul:
                 _log_toast(
-                    f"Missing features for multiclass model: {missing_mul}"
+                    f"Missing features for multiclass model: {missing_mul}; filling with 0"
                 )
-                return
+            df_mul = df.loc[mask].reindex(columns=mul_features, fill_value=0)
 
             _log_toast("Running multiclass classification for attack rows")
-            result.loc[mask, "crlevel"] = mul_clf.predict(
-                df.loc[mask, mul_features]
-            )
+            result.loc[mask, "crlevel"] = mul_clf.predict(df_mul)
         else:
             _log_toast("No attacks detected; skipping multiclass classification")
 
 
-        report_path = base + "_report.csv"
+        report_path = f"{base}_report.csv"
         result.to_csv(report_path, index=False)
-        st.session_state.generated_files.update({pre_csv, fe_csv, report_path})
+        gen_files = {report_path}
+        for f in (clean_csv, pre_csv, fe_csv):
+            if f != path:
+                gen_files.add(f)
+        st.session_state.generated_files.update(gen_files)
         webhook = st.session_state.get("discord_webhook", "")
         gemini_key = st.session_state.get("gemini_key", "")
         line_token = st.session_state.get("line_token", "")
@@ -327,11 +355,13 @@ def app() -> None:
         _log_toast(f"Monitoring started on {folder}")
 
     if st.button("Stop monitoring", disabled=stop_disabled):
-        st.session_state.observer.stop()
-        st.session_state.observer.join()
-        st.session_state.observer = None
-        st.session_state.handler = None
-        _log_toast("Monitoring stopped")
+        observer = st.session_state.observer
+        if observer is not None:
+            observer.stop()
+            observer.join()
+            st.session_state.observer = None
+            st.session_state.handler = None
+            _log_toast("Monitoring stopped")
 
     log_placeholder = st.empty()
     progress_bar = st.progress(0)
@@ -347,11 +377,33 @@ def app() -> None:
         ax.bar(counts["is_attack"].index.astype(str), counts["is_attack"].values, color=["green", "red"])
         st.pyplot(fig)
 
+        st.subheader("is_attack distribution (pie)")
+        fig_pie, ax_pie = plt.subplots()
+        ax_pie.pie(
+            counts["is_attack"].values,
+            labels=counts["is_attack"].index.astype(str),
+            colors=["green", "red"],
+            autopct="%1.1f%%",
+        )
+        ax_pie.axis("equal")
+        st.pyplot(fig_pie)
+
         st.subheader("crlevel distribution")
         cr_colors = ["green", "yellowgreen", "gold", "orange", "red"]
         fig2, ax2 = plt.subplots()
         ax2.bar(counts["crlevel"].index.astype(str), counts["crlevel"].values, color=cr_colors)
         st.pyplot(fig2)
+
+        st.subheader("crlevel distribution (pie)")
+        fig2_pie, ax2_pie = plt.subplots()
+        ax2_pie.pie(
+            counts["crlevel"].values,
+            labels=counts["crlevel"].index.astype(str),
+            colors=cr_colors,
+            autopct="%1.1f%%",
+        )
+        ax2_pie.axis("equal")
+        st.pyplot(fig2_pie)
 
     log_placeholder.text("\n".join(st.session_state.log_lines))
     if st.session_state.observer is not None:
