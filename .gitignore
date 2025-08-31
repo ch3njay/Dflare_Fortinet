@@ -20,3 +20,4 @@
 !*.md
 !*.docx
 !.gitignore
+/monitor

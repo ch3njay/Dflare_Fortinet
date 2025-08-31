@@ -1,8 +1,8 @@
-[subtype]
-[level]
-[srcintf]
-[dstintf]
-[action]
-[service]
-[devtype]
-[crlevel]
+subtype: anomaly, appctrl, forward, local, ssl, webfilter
+level: alert, error, information, notice, warning
+srcintf: adsl_to_tp, port4, port9, root, unknown, unknown0, vlan19, vlan250, vlan95, vlan95_to_tp
+dstintf: adsl_to_tp, mgmt2, port1, port16, port2, port3, port4, port7, port9, root, unknown, vlan1, vlan19, vlan250, vlan95, vlan95_to_tp
+action: accept, block, clear_session, clientrst, close, deny, dns, info, ipconn, pass, passthrough, serverrst, timeout
+service: dcerpc, deny, dns, easycard, financial_106and, ftp, gre, hospitalityerp, http, https, icmp6128, icmp8, imap, imaps, ipassprodsection, kerberos, ldap, mcoinlab, other, pop3, pop3s, rdp, samba, servicehttps, smtp, smtps, snmp, ssh, ssl, statisticslab, stun, tcp, tcp_https, tcp_kms, tcp_mongodb, tcp_mysql, tcp_sql, telnet, udp3478, unknown
+devtype: router, unknown
+crlevel: critical, high, low, unknown
