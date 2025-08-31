@@ -21,12 +21,20 @@ def app() -> None:
         st.info("No prediction results available")
         return
     st.subheader("is_attack distribution")
-    st.bar_chart(df["is_attack"].value_counts())
+    is_counts = df["is_attack"].value_counts().reindex([0, 1], fill_value=0)
+    fig, ax = plt.subplots()
+    ax.bar(is_counts.index.astype(str), is_counts.values, color=["green", "red"])
+    st.pyplot(fig)
+
     if "crlevel" in df.columns:
-        counts = df["crlevel"].value_counts()
+        counts = df["crlevel"].value_counts().reindex([0, 1, 2, 3, 4], fill_value=0)
         st.subheader("crlevel distribution (vertical)")
-        st.bar_chart(counts)
+        fig_v, ax_v = plt.subplots()
+        colors = ["green", "yellowgreen", "gold", "orange", "red"]
+        ax_v.bar(counts.index.astype(str), counts.values, color=colors)
+        st.pyplot(fig_v)
+
         st.subheader("crlevel distribution (horizontal)")
-        fig, ax = plt.subplots()
-        ax.barh(counts.index.astype(str), counts.values)
-        st.pyplot(fig)
+        fig_h, ax_h = plt.subplots()
+        ax_h.barh(counts.index.astype(str), counts.values, color=colors)
+        st.pyplot(fig_h)

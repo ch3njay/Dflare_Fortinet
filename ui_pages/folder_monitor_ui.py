@@ -6,6 +6,7 @@ import contextlib
 import pandas as pd
 import joblib
 import streamlit as st
+import matplotlib.pyplot as plt
 
 from etl_pipeliner import run_pipeline
 from notifier import notify_from_csv
@@ -62,6 +63,15 @@ class _FileMonitorHandler(FileSystemEventHandler):
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
+def _log_toast(msg: str) -> None:
+    """Append *msg* to log and show a toast if supported."""
+    st.session_state.log_lines.append(msg)
+    if hasattr(st, "toast"):
+        st.toast(msg)
+    else:  # pragma: no cover - toast not available
+        st.write(msg)
+
+
 def _run_etl_and_infer(path: str, progress_bar) -> None:
     """Run ETL pipeline and model inference on *path*."""
     bin_model = st.session_state.get("binary_model")
@@ -74,10 +84,8 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
     pre_csv = base + "_preprocessed.csv"
     fe_csv = base + "_engineered.csv"
     try:
-        st.session_state.log_lines.append(f"Detected new file: {path}")
-        st.session_state.log_lines.append(
-            "Cleaning step skipped (assuming input already cleaned)"
-        )
+        _log_toast(f"Detected new file: {path}")
+        _log_toast("Cleaning step skipped (assuming input already cleaned)")
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             run_pipeline(
@@ -98,7 +106,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
 
         df = pd.read_csv(fe_csv)
         if df.isna().any().any():
-            st.session_state.log_lines.append("Detected NaNs; filling with 0")
+            _log_toast("Detected NaNs; filling with 0")
             df.fillna(0, inplace=True)
 
 
@@ -114,42 +122,33 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         bin_features = list(getattr(bin_clf, "feature_names_in_", features))
         missing = [f for f in bin_features if f not in df.columns]
         if missing:
-            st.session_state.log_lines.append(
-                f"Missing features for binary model: {missing}"
-            )
+            _log_toast(f"Missing features for binary model: {missing}")
             return
 
-
-        st.session_state.log_lines.append("Running binary classification")
+        _log_toast("Running binary classification")
         bin_pred = bin_clf.predict(df[bin_features])
         result = raw_df.copy()
 
         result["is_attack"] = bin_pred
         result["crlevel"] = 0
         mask = result["is_attack"] == 1
-        st.session_state.log_lines.append(
-            f"Binary classification found {mask.sum()} attack rows"
-        )
+        _log_toast(f"Binary classification found {mask.sum()} attack rows")
         if mask.any():
             mul_clf = mul_model
             mul_features = list(getattr(mul_clf, "feature_names_in_", features))
             missing_mul = [f for f in mul_features if f not in df.columns]
             if missing_mul:
-                st.session_state.log_lines.append(
+                _log_toast(
                     f"Missing features for multiclass model: {missing_mul}"
                 )
                 return
 
-            st.session_state.log_lines.append(
-                "Running multiclass classification for attack rows"
-            )
+            _log_toast("Running multiclass classification for attack rows")
             result.loc[mask, "crlevel"] = mul_clf.predict(
                 df.loc[mask, mul_features]
             )
         else:
-            st.session_state.log_lines.append(
-                "No attacks detected; skipping multiclass classification"
-            )
+            _log_toast("No attacks detected; skipping multiclass classification")
 
 
         report_path = base + "_report.csv"
@@ -173,12 +172,18 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             line_token=line_token,
         )
 
-        st.session_state.log_lines.append(f"Processed {path} -> {report_path}")
+        # store counts for visualization
+        st.session_state.last_counts = {
+            "is_attack": result["is_attack"].value_counts().reindex([0, 1], fill_value=0),
+            "crlevel": result["crlevel"].value_counts().reindex([0, 1, 2, 3, 4], fill_value=0),
+        }
+
+        _log_toast(f"Processed {path} -> {report_path}")
         for pct in range(0, 101, 20):
             progress_bar.progress(pct)
             time.sleep(0.05)
     except Exception as exc:  # pragma: no cover - processing errors
-        st.session_state.log_lines.append(f"Processing failed {path}: {exc}")
+        _log_toast(f"Processing failed {path}: {exc}")
 
 
 def _cleanup_generated(hours: int, *, force: bool = False) -> None:
@@ -315,14 +320,14 @@ def app() -> None:
         observer.start()
         st.session_state.observer = observer
         st.session_state.handler = handler
-        st.session_state.log_lines.append(f"Monitoring started on {folder}")
+        _log_toast(f"Monitoring started on {folder}")
 
     if st.button("Stop monitoring", disabled=stop_disabled):
         st.session_state.observer.stop()
         st.session_state.observer.join()
         st.session_state.observer = None
         st.session_state.handler = None
-        st.session_state.log_lines.append("Monitoring stopped")
+        _log_toast("Monitoring stopped")
 
     log_placeholder = st.empty()
     progress_bar = st.progress(0)
@@ -330,8 +335,21 @@ def app() -> None:
     if st.session_state.observer is not None:
         _process_events(st.session_state.handler, progress_bar)
         _cleanup_generated(retention)
-        log_placeholder.text("\n".join(st.session_state.log_lines))
+
+    counts = st.session_state.get("last_counts")
+    if counts:
+        st.subheader("is_attack distribution")
+        fig, ax = plt.subplots()
+        ax.bar(counts["is_attack"].index.astype(str), counts["is_attack"].values, color=["green", "red"])
+        st.pyplot(fig)
+
+        st.subheader("crlevel distribution")
+        cr_colors = ["green", "yellowgreen", "gold", "orange", "red"]
+        fig2, ax2 = plt.subplots()
+        ax2.bar(counts["crlevel"].index.astype(str), counts["crlevel"].values, color=cr_colors)
+        st.pyplot(fig2)
+
+    log_placeholder.text("\n".join(st.session_state.log_lines))
+    if st.session_state.observer is not None:
         time.sleep(1)
         _rerun()
-    else:
-        log_placeholder.text("\n".join(st.session_state.log_lines))
