@@ -10,6 +10,11 @@ import joblib
 import streamlit as st
 import matplotlib.pyplot as plt
 
+try:
+    from streamlit_autorefresh import st_autorefresh
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    st_autorefresh = None
+
 from etl_pipeliner import run_pipeline
 from etl_pipeline import log_cleaning as LC
 from notifier import notify_from_csv
@@ -212,6 +217,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             "is_attack": result["is_attack"].value_counts().reindex([0, 1], fill_value=0),
             "crlevel": result["crlevel"].value_counts().reindex([0, 1, 2, 3, 4], fill_value=0),
         }
+        st.session_state.last_critical = result[result["crlevel"] >= 4]
 
         _log_toast(f"Processed {path} -> {report_path}")
         for pct in range(0, 101, 20):
@@ -375,13 +381,28 @@ def app() -> None:
 
     counts = st.session_state.get("last_counts")
     if counts:
+        st.markdown(
+            """
+            <style>
+            .enlarge-chart img {transition: transform 0.2s;}
+            .enlarge-chart img:hover {transform: scale(1.5);}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        def _show(fig):
+            st.markdown('<div class="enlarge-chart">', unsafe_allow_html=True)
+            st.pyplot(fig, use_container_width=False)
+            st.markdown('</div>', unsafe_allow_html=True)
+
         st.subheader("is_attack distribution")
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(4, 3))
         ax.bar(counts["is_attack"].index.astype(str), counts["is_attack"].values, color=["green", "red"])
-        st.pyplot(fig)
+        _show(fig)
 
         st.subheader("is_attack distribution (pie)")
-        fig_pie, ax_pie = plt.subplots()
+        fig_pie, ax_pie = plt.subplots(figsize=(4, 3))
         ax_pie.pie(
             counts["is_attack"].values,
             labels=counts["is_attack"].index.astype(str),
@@ -389,16 +410,16 @@ def app() -> None:
             autopct="%1.1f%%",
         )
         ax_pie.axis("equal")
-        st.pyplot(fig_pie)
+        _show(fig_pie)
 
         st.subheader("crlevel distribution")
         cr_colors = ["green", "yellowgreen", "gold", "orange", "red"]
-        fig2, ax2 = plt.subplots()
+        fig2, ax2 = plt.subplots(figsize=(4, 3))
         ax2.bar(counts["crlevel"].index.astype(str), counts["crlevel"].values, color=cr_colors)
-        st.pyplot(fig2)
+        _show(fig2)
 
         st.subheader("crlevel distribution (pie)")
-        fig2_pie, ax2_pie = plt.subplots()
+        fig2_pie, ax2_pie = plt.subplots(figsize=(4, 3))
         ax2_pie.pie(
             counts["crlevel"].values,
             labels=counts["crlevel"].index.astype(str),
@@ -406,9 +427,19 @@ def app() -> None:
             autopct="%1.1f%%",
         )
         ax2_pie.axis("equal")
-        st.pyplot(fig2_pie)
+        _show(fig2_pie)
+
+        critical = st.session_state.get("last_critical")
+        if critical is not None and not critical.empty:
+            st.subheader("Critical traffic (crlevel ≥ 4)")
+            st.dataframe(critical)
+        else:
+            st.info("No critical traffic predicted in the latest batch.")
 
     log_placeholder.text("\n".join(st.session_state.log_lines))
     if st.session_state.observer is not None:
-        time.sleep(1)
-        _rerun()
+        if st_autorefresh is not None:
+            st_autorefresh(interval=1000, key="monitor_refresh")
+        else:  # pragma: no cover - fallback when autorefresh missing
+            time.sleep(1)
+            _rerun()
