@@ -5,13 +5,13 @@ from pathlib import Path
 
 import streamlit as st
 
-from notifier import notify_from_csv, send_discord
+from notifier import notify_from_csv, send_discord, send_line_to_all
 
 
 def app() -> None:
     st.title("Notification System")
     st.info(
-        "Upload a result CSV to send high-risk events to Discord. Configure "
+        "Upload a result CSV to send high-risk events to Discord/LINE. Configure "
         "webhook and AI settings in the expandable section below."
     )
 
@@ -20,8 +20,9 @@ def app() -> None:
         gemini_key = st.text_input(
             "Gemini API Key", type="password", key="gemini_key"
         )
-        st.text_input("LINE Notify Token", key="line_token")
-        st.info("LINE notifications currently disabled")
+        line_token = st.text_input(
+            "LINE Channel Access Token", type="password", key="line_token"
+        )
 
         risk_levels = st.multiselect("High-risk levels", [1, 2, 3, 4], default=[3, 4])
         dedupe_strategy = st.selectbox(
@@ -43,6 +44,16 @@ def app() -> None:
         else:
             st.warning("Please set the Discord Webhook URL first")
 
+    if st.button("Send LINE test notification"):
+        token = st.session_state.get("line_token", "")
+        if token:
+            if send_line_to_all(token, "This is a test notification from D-FLARE."):
+                st.success("LINE test notification sent")
+            else:
+                st.error("Failed to send LINE notification")
+        else:
+            st.warning("Please set the LINE Channel Access Token first")
+
     uploaded = st.file_uploader("Select result CSV", type=["csv"])
     if uploaded is not None:
         temp_dir = tempfile.gettempdir()
@@ -63,6 +74,7 @@ def app() -> None:
                     ui_log=st.write,
                     dedupe_cache=dedupe_cache,
                     progress_cb=lambda frac: progress.progress(int(frac * 100)),
+                    line_token=line_token,
                 )
                 progress.progress(100)
                 success = sum(1 for _, ok, _ in results if ok)
