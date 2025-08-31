@@ -62,6 +62,7 @@ def app() -> None:
             fh.write(uploaded.getbuffer())
 
         if st.button("Parse and notify"):
+
             if not webhook and not line_token:
                 st.info("Notifications will be displayed only in this app.")
             progress = st.progress(0)
@@ -79,4 +80,5 @@ def app() -> None:
             success = sum(1 for _, ok, _ in results if ok)
             fail = sum(1 for _, ok, _ in results if not ok)
             st.info(f"Succeeded {success}, failed {fail}")
+
 

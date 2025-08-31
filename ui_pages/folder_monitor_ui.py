@@ -104,6 +104,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         gemini_key = st.session_state.get("gemini_key", "")
         line_token = st.session_state.get("line_token", "")
 
+
         def _log(msg: str) -> None:
             st.session_state.log_lines.append(msg)
             st.write(msg)
@@ -116,6 +117,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             ui_log=_log,
             line_token=line_token,
         )
+
         st.session_state.log_lines.append(f"Processed {path} -> {report_path}")
         for pct in range(0, 101, 20):
             progress_bar.progress(pct)

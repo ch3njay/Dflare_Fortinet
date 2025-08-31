@@ -1,5 +1,7 @@
 import json
 import sys
+import json
+import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -68,9 +70,11 @@ def test_notify_from_csv_progress(tmp_path, monkeypatch):
 
 def test_notify_from_csv_line(tmp_path, monkeypatch):
     csv = tmp_path / "events.csv"
+
     csv.write_text(
         "is_attack,crlevel,srcip,description\n1,3,1.1.1.1,test desc\n"
     )
+
 
     monkeypatch.setattr(notifier, "send_discord", lambda url, content: (True, "OK"))
     monkeypatch.setattr(notifier, "ask_gemini", lambda desc, key: "R1\nR2")
@@ -91,6 +95,7 @@ def test_notify_from_csv_line(tmp_path, monkeypatch):
         line_token="TOKEN",
     )
     assert sent and sent[0][0] == "TOKEN"
+
 
 
 def test_notify_from_csv_no_gemini(tmp_path, monkeypatch):
@@ -134,3 +139,4 @@ def test_notify_from_csv_filters_is_attack(tmp_path, monkeypatch):
         risk_levels={"3"},
     )
     assert res == []
+
