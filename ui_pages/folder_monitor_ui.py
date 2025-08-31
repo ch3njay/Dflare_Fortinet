@@ -11,6 +11,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 
 from etl_pipeliner import run_pipeline
+from etl_pipeline import log_cleaning as LC
 from notifier import notify_from_csv
 
 
@@ -86,19 +87,40 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
     p = Path(path)
     while p.suffix in {".gz", ".zip"}:
         p = p.with_suffix("")
+
+    ext = p.suffix.lower()
+    stem = p.stem.lower()
+
+    clean_csv = path
+    do_map = True
+    do_fe = True
+
+    if ext in {".txt", ".log"}:
+        clean_csv = str(p.with_suffix("_clean.csv"))
+        _log_toast("Running cleaning for raw log")
+        LC.clean_logs(quiet=True, paths=[path], clean_csv=clean_csv)
+    else:
+        clean_csv = path
+        if stem.endswith("_engineered"):
+            do_map = False
+            do_fe = False
+        elif stem.endswith("_preprocessed"):
+            do_map = False
+            do_fe = True
+
     base = p.with_suffix("")
-    pre_csv = f"{base}_preprocessed.csv"
-    fe_csv = f"{base}_engineered.csv"
+    pre_csv = clean_csv if not do_map else f"{base}_preprocessed.csv"
+    fe_csv = pre_csv if not do_fe else f"{base}_engineered.csv"
+
     try:
         _log_toast(f"Detected new file: {path}")
-        _log_toast("Cleaning step skipped (assuming input already cleaned)")
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             run_pipeline(
                 do_clean=False,
-                do_map=True,
-                do_fe=True,
-                clean_out=path,
+                do_map=do_map,
+                do_fe=do_fe,
+                clean_out=clean_csv,
                 preproc_out=pre_csv,
                 fe_out=fe_csv,
             )
@@ -117,7 +139,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
 
 
         # original data retained for notification context
-        raw_df = pd.read_csv(path)
+        raw_df = pd.read_csv(clean_csv)
         if raw_df.isna().any().any():
             fill_values = {
                 col: 0 if pd.api.types.is_numeric_dtype(raw_df[col]) else ""
@@ -161,7 +183,11 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
 
         report_path = f"{base}_report.csv"
         result.to_csv(report_path, index=False)
-        st.session_state.generated_files.update({pre_csv, fe_csv, report_path})
+        gen_files = {report_path}
+        for f in (clean_csv, pre_csv, fe_csv):
+            if f != path:
+                gen_files.add(f)
+        st.session_state.generated_files.update(gen_files)
         webhook = st.session_state.get("discord_webhook", "")
         gemini_key = st.session_state.get("gemini_key", "")
         line_token = st.session_state.get("line_token", "")
