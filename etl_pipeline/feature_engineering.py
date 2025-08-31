@@ -7,6 +7,7 @@ feature_engineering.py
 - TB 級流式處理、tqdm 進度條、colorama 色彩、CLI 防笨
 - 不使用 CMS；時間窗採輕量短窗，且預設關閉
 - Top-K 使用離線字典查表（若無字典則自動跳過相關欄位）
+- 新增：duration_zero_flag、rcvd_zero_flag、pkt_total_qbin、pkt_total_qrank
 
 輸入：preprocessed_data.csv（由 log_mapping 輸出）
 輸出：engineered_data.csv
@@ -92,6 +93,10 @@ def _stable_hash32(text: str) -> int:
     h = hashlib.md5(text.encode("utf-8", errors="ignore")).hexdigest()
     return int(h[:8], 16)  # 0 ~ 2^32-1
 
+def _safe_div(numer, denom):
+    """逐元素安全除法：denom>0 才做除法，否則回傳 0.0"""
+    return (numer / denom).where(denom > 0, 0.0)
+
 # ======================
 # 1) 流量統計特徵（低成本）
 # ======================
@@ -107,13 +112,17 @@ def add_traffic_stats(df: pd.DataFrame) -> pd.DataFrame:
 
     total = sent + rcvd
     df["pkt_total"] = total
-    df["pkt_ratio"] = sent / (rcvd + 1.0)
-    df["pkt_rate"]  = total / (dur + 1.0)
-    df["sent_rate"] = sent / (dur + 1.0)
-    df["rcvd_rate"] = rcvd / (dur + 1.0)
+    df["pkt_ratio"] = _safe_div(sent, rcvd)
+    df["pkt_rate"]  = _safe_div(total, dur)
+    df["sent_rate"] = _safe_div(sent, dur)
+    df["rcvd_rate"] = _safe_div(rcvd, dur)
 
     # 簡易「封包間隔」替代（若有 per-event 時長，這裡用 1/dur 作為 proxy）
-    df["inv_duration"] = 1.0 / (dur + 1.0)
+    df["inv_duration"] = _safe_div(1.0, dur)
+
+    # 0/1 旗標
+    df["duration_zero_flag"] = (dur == 0).astype("int8")
+    df["rcvd_zero_flag"]     = (rcvd == 0).astype("int8")
 
     # 分布百分位：以本 chunk 內的 pkt_total 做粗估（避免全域統計成本）
     q = total.quantile([0.25,0.5,0.75,0.90]) if len(total) else pd.Series([0,0,0,0], index=[.25,.5,.75,.9])
@@ -122,6 +131,14 @@ def add_traffic_stats(df: pd.DataFrame) -> pd.DataFrame:
     df["pkt_total_pctl50"] = (total >= p50).astype("int8")
     df["pkt_total_pctl75"] = (total >= p75).astype("int8")
     df["pkt_total_pctl90"] = (total >= p90).astype("int8")
+
+    # 互斥四分位桶與百分位排名
+    qbin = pd.Series(0, index=df.index, dtype="int8")
+    qbin = qbin.where(total < p25, 1)
+    qbin = qbin.where(total < p50, 2)
+    qbin = qbin.where(total < p75, 3)
+    df["pkt_total_qbin"] = qbin.astype("int8")
+    df["pkt_total_qrank"] = total.rank(pct=True)
     return df
 
 # ==================================
