@@ -93,16 +93,20 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
                 st.session_state.log_lines.append(line.strip())
 
 
+
         # feature engineered data for model inference
+
         df = pd.read_csv(fe_csv)
         if df.isna().any().any():
             st.session_state.log_lines.append("Detected NaNs; filling with 0")
             df.fillna(0, inplace=True)
 
+
         # original data retained for notification context
         raw_df = pd.read_csv(path)
         if raw_df.isna().any().any():
             raw_df.fillna("", inplace=True)
+
 
         features = [c for c in df.columns if c not in {"is_attack", "crlevel"}]
 
@@ -115,9 +119,11 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             )
             return
 
+
         st.session_state.log_lines.append("Running binary classification")
         bin_pred = bin_clf.predict(df[bin_features])
         result = raw_df.copy()
+
         result["is_attack"] = bin_pred
         result["crlevel"] = 0
         mask = result["is_attack"] == 1
@@ -133,6 +139,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
                     f"Missing features for multiclass model: {missing_mul}"
                 )
                 return
+
             st.session_state.log_lines.append(
                 "Running multiclass classification for attack rows"
             )
@@ -144,12 +151,14 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
                 "No attacks detected; skipping multiclass classification"
             )
 
+
         report_path = base + "_report.csv"
         result.to_csv(report_path, index=False)
         st.session_state.generated_files.update({pre_csv, fe_csv, report_path})
         webhook = st.session_state.get("discord_webhook", "")
         gemini_key = st.session_state.get("gemini_key", "")
         line_token = st.session_state.get("line_token", "")
+
 
         def _log(msg: str) -> None:
             st.session_state.log_lines.append(msg)
@@ -163,6 +172,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             ui_log=_log,
             line_token=line_token,
         )
+
         st.session_state.log_lines.append(f"Processed {path} -> {report_path}")
         for pct in range(0, 101, 20):
             progress_bar.progress(pct)
@@ -239,7 +249,9 @@ def app() -> None:
         if selected:
             st.session_state.folder_input = selected
             st.session_state.folder = selected
+
             _rerun()
+
 
     with col2:
         st.button(

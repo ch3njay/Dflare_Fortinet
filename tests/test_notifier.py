@@ -1,5 +1,7 @@
 import json
 import sys
+import json
+import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -72,6 +74,7 @@ def test_notify_from_csv_line(tmp_path, monkeypatch):
         "is_attack,crlevel,srcip,description\n1,3,1.1.1.1,test desc\n"
     )
 
+
     monkeypatch.setattr(notifier, "send_discord", lambda url, content: (True, "OK"))
     monkeypatch.setattr(notifier, "ask_gemini", lambda desc, key: "R1\nR2")
 
@@ -134,3 +137,4 @@ def test_notify_from_csv_filters_is_attack(tmp_path, monkeypatch):
         risk_levels={"3"},
     )
     assert res == []
+
