@@ -76,11 +76,22 @@ def _log_toast(msg: str) -> None:
         st.write(msg)
 
 
-def _run_etl_and_infer(path: str, progress_bar) -> None:
-    """Run ETL pipeline and model inference on *path*."""
+def _run_etl_and_infer(path: str, progress_bar, status_placeholder) -> None:
+    """Run ETL pipeline and model inference on *path*.
+
+    Parameters
+    ----------
+    path: str
+        The path to the file being processed.
+    progress_bar: streamlit.delta_generator.DeltaGenerator
+        Progress bar widget used for simple progress feedback.
+    status_placeholder: streamlit.delta_generator.DeltaGenerator
+        Placeholder used to display textual status updates to the user.
+    """
     bin_model = st.session_state.get("binary_model")
     mul_model = st.session_state.get("multi_model")
     if not (bin_model and mul_model):
+        status_placeholder.text("Models not uploaded; skipping")
         st.session_state.log_lines.append("Models not uploaded; skipping")
         return
 
@@ -114,8 +125,10 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
     fe_csv = pre_csv if not do_fe else f"{base}_engineered.csv"
 
     try:
+        status_placeholder.text(f"Detected new file: {path}")
         _log_toast(f"Detected new file: {path}")
         buf = io.StringIO()
+        status_placeholder.text("Running ETL pipeline...")
         with contextlib.redirect_stdout(buf):
             run_pipeline(
                 do_clean=False,
@@ -158,6 +171,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             _log_toast(f"Missing features for binary model: {missing}; filling with 0")
         df_bin = df.reindex(columns=bin_features, fill_value=0)
 
+        status_placeholder.text("Running binary classification...")
         _log_toast("Running binary classification")
         bin_pred = bin_clf.predict(df_bin)
         result = raw_df.copy()
@@ -176,9 +190,15 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
                 )
             df_mul = df.loc[mask].reindex(columns=mul_features, fill_value=0)
 
+            status_placeholder.text(
+                "Running multiclass classification for attack rows..."
+            )
             _log_toast("Running multiclass classification for attack rows")
             result.loc[mask, "crlevel"] = mul_clf.predict(df_mul)
         else:
+            status_placeholder.text(
+                "No attacks detected; skipping multiclass classification"
+            )
             _log_toast("No attacks detected; skipping multiclass classification")
 
 
@@ -213,6 +233,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
             "crlevel": result["crlevel"].value_counts().reindex([0, 1, 2, 3, 4], fill_value=0),
         }
 
+        status_placeholder.text(f"Processed {path} -> {report_path}")
         _log_toast(f"Processed {path} -> {report_path}")
         for pct in range(0, 101, 20):
             progress_bar.progress(pct)
@@ -237,7 +258,7 @@ def _cleanup_generated(hours: int, *, force: bool = False) -> None:
         st.session_state.log_lines.append(f"Removed {f}")
 
 
-def _process_events(handler: _FileMonitorHandler, progress_bar) -> None:
+def _process_events(handler: _FileMonitorHandler, progress_bar, status_placeholder) -> None:
     """Process newly detected files."""
     new_events = handler.events[len(st.session_state.get("processed_events", [])) :]
     for _, path in new_events:
@@ -250,7 +271,7 @@ def _process_events(handler: _FileMonitorHandler, progress_bar) -> None:
             continue
         if path in st.session_state.get("processed_files", set()):
             continue
-        _run_etl_and_infer(path, progress_bar)
+        _run_etl_and_infer(path, progress_bar, status_placeholder)
         st.session_state.setdefault("processed_files", set()).add(path)
     st.session_state.processed_events = handler.events[:]
 
@@ -348,6 +369,8 @@ def app() -> None:
     start_disabled = st.session_state.observer is not None
     stop_disabled = st.session_state.observer is None
 
+    status_placeholder = st.empty()
+
     if st.button("Start monitoring", disabled=start_disabled):
         handler = _FileMonitorHandler()
         observer = Observer()
@@ -355,6 +378,7 @@ def app() -> None:
         observer.start()
         st.session_state.observer = observer
         st.session_state.handler = handler
+        status_placeholder.text(f"Monitoring started on {folder}")
         _log_toast(f"Monitoring started on {folder}")
 
     if st.button("Stop monitoring", disabled=stop_disabled):
@@ -364,13 +388,14 @@ def app() -> None:
             observer.join()
             st.session_state.observer = None
             st.session_state.handler = None
+            status_placeholder.text("Monitoring stopped")
             _log_toast("Monitoring stopped")
 
     log_placeholder = st.empty()
     progress_bar = st.progress(0)
 
     if st.session_state.observer is not None:
-        _process_events(st.session_state.handler, progress_bar)
+        _process_events(st.session_state.handler, progress_bar, status_placeholder)
         _cleanup_generated(retention)
 
     counts = st.session_state.get("last_counts")
