@@ -228,6 +228,7 @@ def notify_from_csv(
         cr_text = {1: "low", 2: "medium", 3: "high", 4: "critical"}[cr_int]
         srcip = row.get(src_col)
         desc = row.get(desc_col)
+
         if gemini_key:
             ai_text = ask_gemini(str(desc), gemini_key)
             lines = ai_text.splitlines()
@@ -248,6 +249,7 @@ def notify_from_csv(
                 f"Source IP: {srcip}\n"
                 f"Description: {desc}"
             )
+
         if ui_log:
             ui_log(message)
         ok = True
