@@ -176,15 +176,25 @@ def app() -> None:
     col1, col2 = st.columns([3, 1])
     with col1:
         st.text_input("Folder to monitor", key="folder_input")
+
+    def _browse_folder() -> None:
+        if tk is None or filedialog is None:
+            return
+        root = tk.Tk()
+        root.withdraw()
+        selected = filedialog.askdirectory()
+        if selected:
+            st.session_state.folder_input = selected
+            st.session_state.folder = selected
+            st.experimental_rerun()
+
     with col2:
-        if st.button("Browse", disabled=tk is None or filedialog is None):
-            root = tk.Tk()
-            root.withdraw()
-            selected = filedialog.askdirectory()
-            if selected:
-                st.session_state.folder_input = selected
-                st.session_state.folder = selected
-                st.experimental_rerun()
+        st.button(
+            "Browse",
+            disabled=tk is None or filedialog is None,
+            on_click=_browse_folder,
+        )
+
     folder = st.session_state.folder_input
     st.session_state.folder = folder
 
