@@ -87,6 +87,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
     p = Path(path)
     while p.suffix in {".gz", ".zip"}:
         p = p.with_suffix("")
+
     ext = p.suffix.lower()
     stem = p.stem.lower()
 
@@ -110,6 +111,7 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
     base = p.with_suffix("")
     pre_csv = clean_csv if not do_map else f"{base}_preprocessed.csv"
     fe_csv = pre_csv if not do_fe else f"{base}_engineered.csv"
+
     try:
         _log_toast(f"Detected new file: {path}")
         buf = io.StringIO()
