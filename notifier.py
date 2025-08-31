@@ -204,6 +204,7 @@ def notify_from_csv(
     cr_col = _find_column(columns, _COLUMN_ALIASES["crlevel"])
     src_col = _find_column(columns, _COLUMN_ALIASES["srcip"])
     desc_col = _find_column(columns, _COLUMN_ALIASES["description"])
+    atk_col = _find_column(columns, ["is_attack"])
     if not (cr_col and src_col and desc_col):
         if ui_log:
             ui_log("CSV missing required columns.")
@@ -213,30 +214,51 @@ def notify_from_csv(
     results = []
     total = len(rows)
     for idx, row in enumerate(rows, 1):
+        if atk_col:
+            val = row.get(atk_col, 0)
+            try:
+                atk = int(val)
+            except Exception:
+                atk = 1 if str(val).strip().lower() in {"1", "true", "yes"} else 0
+            if atk != 1:
+                continue
         cr_int = normalize_crlevel(row.get(cr_col))
         if cr_int is None or cr_int not in risk_ints:
             continue
         cr_text = {1: "low", 2: "medium", 3: "high", 4: "critical"}[cr_int]
         srcip = row.get(src_col)
         desc = row.get(desc_col)
-        ai_text = ask_gemini(str(desc), gemini_key)
-        lines = ai_text.splitlines()
-        reco1 = lines[0] if lines else ""
-        reco2 = lines[1] if len(lines) > 1 else ""
-        message = (
-            "🚨 High-risk event detected (Fortinet)\n"
-            f"Level: {cr_text} ({cr_int})\n"
-            f"Source IP: {srcip}\n"
-            f"Description: {desc}\n"
-            "———— AI Recommendation ————\n"
-            f"{reco1}\n{reco2}"
-        )
-        ok, info = send_discord(discord_webhook, message)
+
+        if gemini_key:
+            ai_text = ask_gemini(str(desc), gemini_key)
+            lines = ai_text.splitlines()
+            reco1 = lines[0] if lines else ""
+            reco2 = lines[1] if len(lines) > 1 else ""
+            message = (
+                "🚨 High-risk event detected (Fortinet)\n"
+                f"Level: {cr_text} ({cr_int})\n"
+                f"Source IP: {srcip}\n"
+                f"Description: {desc}\n"
+                "———— AI Recommendation ————\n"
+                f"{reco1}\n{reco2}"
+            )
+        else:
+            message = (
+                "🚨 High-risk event detected (Fortinet)\n"
+                f"Level: {cr_text} ({cr_int})\n"
+                f"Source IP: {srcip}\n"
+                f"Description: {desc}"
+            )
+
+        if ui_log:
+            ui_log(message)
+        ok = True
+        info = ""
+        if discord_webhook:
+            ok, info = send_discord(discord_webhook, message)
         if line_token:
             send_line_to_all(line_token, message, callback=ui_log)
         results.append((message, ok, info))
-        if ui_log:
-            ui_log(f"Sent event: {srcip} - {'success' if ok else 'failure'}")
         if progress_cb:
             progress_cb(idx / total if total else 1.0)
 

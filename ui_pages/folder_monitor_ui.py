@@ -103,15 +103,21 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         webhook = st.session_state.get("discord_webhook", "")
         gemini_key = st.session_state.get("gemini_key", "")
         line_token = st.session_state.get("line_token", "")
-        if webhook or line_token:
-            notify_from_csv(
-                report_path,
-                webhook,
-                gemini_key,
-                risk_levels={"3", "4"},
-                ui_log=st.write,
-                line_token=line_token,
-            )
+
+
+        def _log(msg: str) -> None:
+            st.session_state.log_lines.append(msg)
+            st.write(msg)
+
+        notify_from_csv(
+            report_path,
+            webhook,
+            gemini_key,
+            risk_levels={"3", "4"},
+            ui_log=_log,
+            line_token=line_token,
+        )
+
         st.session_state.log_lines.append(f"Processed {path} -> {report_path}")
         for pct in range(0, 101, 20):
             progress_bar.progress(pct)

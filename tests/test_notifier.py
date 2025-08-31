@@ -17,7 +17,11 @@ def test_normalize_crlevel_mapping():
 
 def test_notify_from_csv(tmp_path, monkeypatch):
     csv = tmp_path / "events.csv"
-    csv.write_text("crlevel,srcip,description\n3,1.1.1.1,test desc\n2,2.2.2.2,low\n")
+    csv.write_text(
+        "is_attack,crlevel,srcip,description\n"
+        "1,3,1.1.1.1,test desc\n"
+        "0,3,2.2.2.2,low\n"
+    )
 
     sent = []
 
@@ -46,7 +50,9 @@ def test_notify_from_csv(tmp_path, monkeypatch):
 
 def test_notify_from_csv_progress(tmp_path, monkeypatch):
     csv = tmp_path / "events.csv"
-    csv.write_text("crlevel,srcip,description\n3,1.1.1.1,test desc\n")
+    csv.write_text(
+        "is_attack,crlevel,srcip,description\n1,3,1.1.1.1,test desc\n"
+    )
 
     monkeypatch.setattr(notifier, "send_discord", lambda url, content: (True, "OK"))
     monkeypatch.setattr(notifier, "ask_gemini", lambda desc, key: "R1\nR2")
@@ -64,7 +70,11 @@ def test_notify_from_csv_progress(tmp_path, monkeypatch):
 
 def test_notify_from_csv_line(tmp_path, monkeypatch):
     csv = tmp_path / "events.csv"
-    csv.write_text("crlevel,srcip,description\n3,1.1.1.1,test desc\n")
+
+    csv.write_text(
+        "is_attack,crlevel,srcip,description\n1,3,1.1.1.1,test desc\n"
+    )
+
 
     monkeypatch.setattr(notifier, "send_discord", lambda url, content: (True, "OK"))
     monkeypatch.setattr(notifier, "ask_gemini", lambda desc, key: "R1\nR2")
@@ -85,3 +95,48 @@ def test_notify_from_csv_line(tmp_path, monkeypatch):
         line_token="TOKEN",
     )
     assert sent and sent[0][0] == "TOKEN"
+
+
+
+def test_notify_from_csv_no_gemini(tmp_path, monkeypatch):
+    csv = tmp_path / "events.csv"
+    csv.write_text(
+        "is_attack,crlevel,srcip,description\n1,3,1.1.1.1,test desc\n"
+    )
+
+    called = {"ask": False}
+
+    def fake_ask(desc, key):
+        called["ask"] = True
+        return "should not be called"
+
+    monkeypatch.setattr(notifier, "ask_gemini", fake_ask)
+    monkeypatch.setattr(notifier, "send_discord", lambda url, content: (True, "OK"))
+
+    res = notifier.notify_from_csv(
+        str(csv),
+        "http://hook",
+        "",
+        risk_levels={"3"},
+    )
+    assert not called["ask"]
+    assert "AI Recommendation" not in res[0][0]
+
+
+def test_notify_from_csv_filters_is_attack(tmp_path, monkeypatch):
+    csv = tmp_path / "events.csv"
+    csv.write_text(
+        "is_attack,crlevel,srcip,description\n0,3,1.1.1.1,test desc\n"
+    )
+
+    monkeypatch.setattr(notifier, "send_discord", lambda url, content: (True, "OK"))
+    monkeypatch.setattr(notifier, "ask_gemini", lambda desc, key: "R1\nR2")
+
+    res = notifier.notify_from_csv(
+        str(csv),
+        "http://hook",
+        "key",
+        risk_levels={"3"},
+    )
+    assert res == []
+
