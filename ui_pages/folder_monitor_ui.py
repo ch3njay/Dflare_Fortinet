@@ -7,6 +7,13 @@ import streamlit as st
 from etl_pipeliner import run_pipeline
 from notifier import notify_from_csv
 
+
+def _rerun() -> None:
+    """Trigger a Streamlit rerun across versions."""
+    rerun = getattr(st, "rerun", getattr(st, "experimental_rerun", None))
+    if rerun is not None:  # pragma: no branch - either rerun or experimental_rerun
+        rerun()
+
 try:
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
@@ -103,15 +110,21 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
         webhook = st.session_state.get("discord_webhook", "")
         gemini_key = st.session_state.get("gemini_key", "")
         line_token = st.session_state.get("line_token", "")
-        if webhook or line_token:
-            notify_from_csv(
-                report_path,
-                webhook,
-                gemini_key,
-                risk_levels={"3", "4"},
-                ui_log=st.write,
-                line_token=line_token,
-            )
+
+
+        def _log(msg: str) -> None:
+            st.session_state.log_lines.append(msg)
+            st.write(msg)
+
+        notify_from_csv(
+            report_path,
+            webhook,
+            gemini_key,
+            risk_levels={"3", "4"},
+            ui_log=_log,
+            line_token=line_token,
+        )
+
         st.session_state.log_lines.append(f"Processed {path} -> {report_path}")
         for pct in range(0, 101, 20):
             progress_bar.progress(pct)
@@ -186,7 +199,9 @@ def app() -> None:
         if selected:
             st.session_state.folder_input = selected
             st.session_state.folder = selected
-            st.experimental_rerun()
+
+            _rerun()
+
 
     with col2:
         st.button(
@@ -267,6 +282,6 @@ def app() -> None:
         _cleanup_generated(retention)
         log_placeholder.text("\n".join(st.session_state.log_lines))
         time.sleep(1)
-        st.experimental_rerun()
+        _rerun()
     else:
         log_placeholder.text("\n".join(st.session_state.log_lines))

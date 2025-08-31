@@ -62,22 +62,22 @@ def app() -> None:
             fh.write(uploaded.getbuffer())
 
         if st.button("Parse and notify"):
-            if not webhook:
-                st.warning("Please set the Discord Webhook URL first")
-            else:
-                progress = st.progress(0)
-                results = notify_from_csv(
-                    str(tmp_path),
-                    webhook,
-                    gemini_key,
-                    risk_levels={str(r) for r in risk_levels},
-                    ui_log=st.write,
-                    dedupe_cache=dedupe_cache,
-                    progress_cb=lambda frac: progress.progress(int(frac * 100)),
-                    line_token=line_token,
-                )
-                progress.progress(100)
-                success = sum(1 for _, ok, _ in results if ok)
-                fail = sum(1 for _, ok, _ in results if not ok)
-                st.info(f"Succeeded {success}, failed {fail}")
+
+            if not webhook and not line_token:
+                st.info("Notifications will be displayed only in this app.")
+            progress = st.progress(0)
+            results = notify_from_csv(
+                str(tmp_path),
+                webhook,
+                gemini_key,
+                risk_levels={str(r) for r in risk_levels},
+                ui_log=st.write,
+                dedupe_cache=dedupe_cache,
+                progress_cb=lambda frac: progress.progress(int(frac * 100)),
+                line_token=line_token,
+            )
+            progress.progress(100)
+            success = sum(1 for _, ok, _ in results if ok)
+            fail = sum(1 for _, ok, _ in results if not ok)
+            st.info(f"Succeeded {success}, failed {fail}")
 
