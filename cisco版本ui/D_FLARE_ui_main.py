@@ -1170,19 +1170,28 @@ class MainWindow(QMainWindow):
 
     # ====== slot: 暫停主流程（清理前呼叫）======
     def pause_pipeline(self):
-        # 例：暫停 log 監聽的 timer 或 pipeline 處理
+        """Pause timers in the log fetcher widget if available."""
+        fetcher = getattr(self, "log_fetcher", None)
+        if fetcher is None:
+            return
         try:
-            self.log_fetcher_widget.poll_timer.stop()
-            self.log_fetcher_widget.auto_clean_timer.stop()
+            if getattr(fetcher, "poll_timer", None):
+                fetcher.poll_timer.stop()
+            if getattr(fetcher, "auto_clean_timer", None):
+                fetcher.auto_clean_timer.stop()
             print("主流程暫停：log 輪詢與自動清洗已停止。")
         except Exception as e:
             print(f"暫停主流程例外: {e}")
 
     # ====== slot: 恢復主流程（清理完呼叫）======
     def resume_pipeline(self):
-        # 例：恢復 log 監聽 timer
+        """Resume timers in the log fetcher widget if available."""
+        fetcher = getattr(self, "log_fetcher", None)
+        if fetcher is None:
+            return
         try:
-            self.log_fetcher_widget.poll_timer.start(5000)  # 5 秒
+            if getattr(fetcher, "poll_timer", None):
+                fetcher.poll_timer.start(5000)  # 5 秒
             print("主流程恢復：log 輪詢已恢復。")
         except Exception as e:
             print(f"恢復主流程例外: {e}")
