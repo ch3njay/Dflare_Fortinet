@@ -7,6 +7,13 @@ import streamlit as st
 from etl_pipeliner import run_pipeline
 from notifier import notify_from_csv
 
+
+def _rerun() -> None:
+    """Trigger a Streamlit rerun across versions."""
+    rerun = getattr(st, "rerun", getattr(st, "experimental_rerun", None))
+    if rerun is not None:  # pragma: no branch - either rerun or experimental_rerun
+        rerun()
+
 try:
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
@@ -190,7 +197,7 @@ def app() -> None:
         if selected:
             st.session_state.folder_input = selected
             st.session_state.folder = selected
-            st.experimental_rerun()
+            _rerun()
 
     with col2:
         st.button(
@@ -271,6 +278,6 @@ def app() -> None:
         _cleanup_generated(retention)
         log_placeholder.text("\n".join(st.session_state.log_lines))
         time.sleep(1)
-        st.experimental_rerun()
+        _rerun()
     else:
         log_placeholder.text("\n".join(st.session_state.log_lines))
