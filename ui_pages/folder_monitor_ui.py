@@ -96,7 +96,8 @@ def _run_etl_and_infer(path: str, progress_bar) -> None:
     do_fe = True
 
     if ext in {".txt", ".log"}:
-        clean_csv = str(p.with_suffix("_clean.csv"))
+        clean_csv = str(p.with_name(p.stem + "_clean.csv"))
+
         _log_toast("Running cleaning for raw log")
         LC.clean_logs(quiet=True, paths=[path], clean_csv=clean_csv)
     else:
