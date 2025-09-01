@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog
 
 
+
 def load_log_file(path: str) -> pd.DataFrame:
     """Load a log file that may be csv/txt/gz/rar."""
     ext = os.path.splitext(path)[1].lower()
@@ -41,17 +42,20 @@ def main() -> None:
     try:
         df = load_log_file(file_path)
     except Exception as exc:
+
         print(f"Failed to load file: {exc}")
         return
 
     if "crlevel" not in df.columns or "crscore" not in df.columns:
         print("File must contain 'crlevel' and 'crscore' columns.")
+
         return
 
     df["is_attack"] = (df["crscore"] > 0).astype(int)
 
     crlevel_counts = df["crlevel"].value_counts()
     is_attack_counts = df["is_attack"].value_counts()
+
 
     crlevel_options = list(crlevel_counts.items())
     is_attack_options = list(is_attack_counts.items())
@@ -114,6 +118,7 @@ def main() -> None:
         return
     if sample_size <= 0 or sample_size > len(filtered):
         print("Sample size must be between 1 and number of selected rows.")
+
         return
 
     sample_df = filtered.sample(n=sample_size)
@@ -124,11 +129,13 @@ def main() -> None:
         filetypes=[("CSV", "*.csv"), ("All files", "*.*")],
     )
     if not save_path:
+
         print("No save path selected. Exiting.")
         return
 
     sample_df.to_csv(save_path, index=False)
     print(f"Sample saved to {save_path}")
+
 
 
 if __name__ == "__main__":

@@ -8,7 +8,6 @@ from pathlib import Path
 import pandas as pd
 import joblib
 import streamlit as st
-import matplotlib.pyplot as plt
 
 try:
     from streamlit_autorefresh import st_autorefresh
@@ -238,6 +237,7 @@ def _run_etl_and_infer(path: str, progress_bar, status_placeholder) -> None:
             "crlevel": result["crlevel"].value_counts().reindex([0, 1, 2, 3, 4], fill_value=0),
         }
         st.session_state.last_critical = result[result["crlevel"] >= 4]
+        st.session_state.last_report_path = report_path
 
         status_placeholder.text(f"Processed {path} -> {report_path}")
         _log_toast(f"Processed {path} -> {report_path}")
@@ -404,62 +404,11 @@ def app() -> None:
         _process_events(st.session_state.handler, progress_bar, status_placeholder)
         _cleanup_generated(retention)
 
-    counts = st.session_state.get("last_counts")
-    if counts:
-        st.markdown(
-            """
-            <style>
-            .enlarge-chart img {transition: transform 0.2s;}
-            .enlarge-chart img:hover {transform: scale(1.5);}
-            </style>
-            """,
-            unsafe_allow_html=True,
+    report_path = st.session_state.get("last_report_path")
+    if report_path:
+        st.success(
+            f"Report generated: {report_path}. Please visit the 'Prediction Visualization' page to review charts and details."
         )
-
-        def _show(fig):
-            st.markdown('<div class="enlarge-chart">', unsafe_allow_html=True)
-            st.pyplot(fig, use_container_width=False)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        st.subheader("is_attack distribution")
-        fig, ax = plt.subplots(figsize=(4, 3))
-        ax.bar(counts["is_attack"].index.astype(str), counts["is_attack"].values, color=["green", "red"])
-        _show(fig)
-
-        st.subheader("is_attack distribution (pie)")
-        fig_pie, ax_pie = plt.subplots(figsize=(4, 3))
-        ax_pie.pie(
-            counts["is_attack"].values,
-            labels=counts["is_attack"].index.astype(str),
-            colors=["green", "red"],
-            autopct="%1.1f%%",
-        )
-        ax_pie.axis("equal")
-        _show(fig_pie)
-
-        st.subheader("crlevel distribution")
-        cr_colors = ["green", "yellowgreen", "gold", "orange", "red"]
-        fig2, ax2 = plt.subplots(figsize=(4, 3))
-        ax2.bar(counts["crlevel"].index.astype(str), counts["crlevel"].values, color=cr_colors)
-        _show(fig2)
-
-        st.subheader("crlevel distribution (pie)")
-        fig2_pie, ax2_pie = plt.subplots(figsize=(4, 3))
-        ax2_pie.pie(
-            counts["crlevel"].values,
-            labels=counts["crlevel"].index.astype(str),
-            colors=cr_colors,
-            autopct="%1.1f%%",
-        )
-        ax2_pie.axis("equal")
-        _show(fig2_pie)
-
-        critical = st.session_state.get("last_critical")
-        if critical is not None and not critical.empty:
-            st.subheader("Critical traffic (crlevel ≥ 4)")
-            st.dataframe(critical)
-        else:
-            st.info("No critical traffic predicted in the latest batch.")
 
     log_placeholder.text("\n".join(st.session_state.log_lines))
     if st.session_state.observer is not None:
