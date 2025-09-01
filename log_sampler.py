@@ -4,13 +4,16 @@ import tkinter as tk
 from tkinter import filedialog
 
 
+
 def load_log_file(path: str) -> pd.DataFrame:
     """Load a log file that may be csv/txt/gz/rar."""
     ext = os.path.splitext(path)[1].lower()
     if ext == ".rar":
         try:
             import rarfile  # type: ignore
+
         except ImportError as exc:  # pragma: no cover - rarfile is optional
+
             raise RuntimeError(
                 "Reading .rar files requires the 'rarfile' package."
             ) from exc
@@ -21,6 +24,7 @@ def load_log_file(path: str) -> pd.DataFrame:
     else:
         # pandas can infer compression for .gz
         return pd.read_csv(path, sep=None, engine="python")
+
 
 
 def parse_selection(options: list[tuple[str, int]], label: str) -> list[str]:
@@ -52,13 +56,16 @@ def balanced_sample(df: pd.DataFrame, col: str) -> pd.DataFrame:
     )
 
 
+
 def main() -> None:
     root = tk.Tk()
     root.withdraw()
 
     file_path = filedialog.askopenfilename(
         title="Select log file",
+
         filetypes=[("Log files", "*.csv *.txt *.gz *.rar"), ("All files", "*.*")],
+
     )
     if not file_path:
         print("No file selected. Exiting.")
@@ -66,18 +73,22 @@ def main() -> None:
 
     try:
         df = load_log_file(file_path)
+
     except Exception as exc:  # pragma: no cover - GUI feedback only
+
         print(f"Failed to load file: {exc}")
         return
 
     if "crlevel" not in df.columns or "crscore" not in df.columns:
         print("File must contain 'crlevel' and 'crscore' columns.")
+
         return
 
     df["is_attack"] = (df["crscore"] > 0).astype(int)
 
     crlevel_counts = df["crlevel"].value_counts()
     is_attack_counts = df["is_attack"].value_counts()
+
     crlevel_options = list(crlevel_counts.items())
     is_attack_options = list(is_attack_counts.items())
 
@@ -161,17 +172,20 @@ def main() -> None:
         return
 
     combined = pd.concat(samples, ignore_index=True)
+
     save_path = filedialog.asksaveasfilename(
         title="Save sampled data",
         defaultextension=".csv",
         filetypes=[("CSV", "*.csv"), ("All files", "*.*")],
     )
     if not save_path:
+
         print("No save path selected. Exiting.")
         return
 
     combined.to_csv(save_path, index=False)
     print(f"Sample saved to {save_path}")
+
 
 
 if __name__ == "__main__":
